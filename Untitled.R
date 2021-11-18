@@ -1,5 +1,5 @@
 ###zaj3 r mini
-set.seed(124)
+set.seed(123)
 x <- round(rnorm(20,0,1), 2)
 
 
