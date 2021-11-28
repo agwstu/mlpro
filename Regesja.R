@@ -15,4 +15,23 @@ str(data_r)
 # checking_status- skala przedziałowa
 # duration - skala ilorazowa
 # credit history - skala nominalna
-#  credit 
+# purpose - skala nominalna
+# credit_amount - skala ilorazowa
+# saving_status - skala przedzialowa
+# employment  - skala przedzialowa
+# installment_commitment - skala porządkowa 
+# personal_status - skala nominalna 
+# other_parties - nie wiem ?
+# residence_since - ilorazowa ?
+# property_magnitude - nominalna ?
+# age - absolutna 
+# other_paument_plans - nomianlna?
+# housing - nominalna 
+# existing_credits - ilorazowa ?
+# job - nominalna 
+# num_dependents ?
+# own telephone - nomianlna
+# foreign_woreker - nominalna
+# class - nominalna 
+
+
