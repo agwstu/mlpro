@@ -1,0 +1,48 @@
+---
+title: classification
+subtitle: A short description of the project.
+author: "Your name (or your organization/company/team) Your email"
+bibliography: bibliography.bib
+link-citations: yes
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  pdf_document:
+    toc: yes
+    df_print: kable
+    fig_width: 7
+    fig_caption: yes
+    html_document:
+      number_sections: no
+      theme: cerulean
+      highligt: pygments
+---
+
+# classification
+
+by: Your name (or your organization/company/team) Your email
+
+## Introduction*
+
+A short description of the project.
+
+## Data Inspection
+
+credit_df <- read.csv("dataset_31_credit-g.csv")
+
+## Data Preprocessing
+
+## Model
+
+## Diagnostics
+<!-- Residuals Error Checking -->
+
+## Forecast
+
+## Analysis
+
+## Conclusion
+
+## References
+<!-- This is required to attach the bibliography -->
