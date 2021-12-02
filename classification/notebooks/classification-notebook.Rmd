@@ -31,7 +31,23 @@ A short description of the project.
 
 credit_df <- read.csv("dataset_31_credit-g.csv")
 
+
+
 ## Data Preprocessing
+###Loading data
+``` {r, include = FLASE}
+data_r <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.csv")
+```
+### Types, scales features of data 
+
+
+
+### Handling na 
+``` {r, include = TRUE}
+table(is.na(data_r))
+colSum()
+```
+
 
 ## Model
 

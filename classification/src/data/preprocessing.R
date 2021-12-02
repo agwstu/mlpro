@@ -1,5 +1,7 @@
 ### Classification: Preprocessing
 
+df <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.csv")
+
 
 pacman::p_load(tidyverse)
 df <- read.csv("classification\\data\\raw\\dataset_31_credit-g.csv")
@@ -42,3 +44,12 @@ dictionary <- tibble(features = features,
                      scale = scales,
                      pretty_name = pretty_names)
 dictionary
+
+# Spotting variables' duplicates 
+
+table(duplicated(df))
+
+# no duplicates in data
+
+
+
