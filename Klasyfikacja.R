@@ -1,5 +1,5 @@
 #####################
-### Klasyfikacja ####
+### Regresja ####
 #####################
 
 #install.packages("DescTools")
