@@ -5,8 +5,6 @@
 
 data_r <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.csv")
 
-# Nie wiem, czy to bedzie dzialać, ale to dla Ciebie Mateusz <3
-data_r <- read.csv("~/dataset_31_credit-g.csv")
 
 # Wyświetlenie typów danych
 str(data_r)
@@ -33,5 +31,11 @@ str(data_r)
 # own telephone - nomianlna
 # foreign_woreker - nominalna
 # class - nominalna 
+
+### Handling na 
+
+table(is.na(data_r))
+
+
 
 
