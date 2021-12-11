@@ -32,7 +32,6 @@ There are 515345 observations in the dataset. 90 attributes describe each and si
 
 ### Reading data
 ```{r}
-setwd("C:\\Users\\Mateusz\\OneDrive\\Dokumenty\\GitHub\\mlpro")
 raw_data <- read.csv('regression\\data\\raw\\YearPredictionMSD.txt',
                      header = FALSE)
 ```
