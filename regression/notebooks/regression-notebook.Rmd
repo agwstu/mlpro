@@ -23,7 +23,7 @@ output:
 
 Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011, with the greatest number of observations in 2000s \cite{Bertin-Mahieux2011}. We downloaded it from the Machine Learning Repository \cite{Dua:2019}.
 ```{r}
-pacman::p_load(data.table, tidyverse, knitr)
+pacman::p_load(data.table, tidyverse, knitr, ggcorrplot)
 ```
 
 ## Data Inspection
@@ -32,6 +32,7 @@ There are 515345 observations in the dataset. 90 attributes describe each and si
 
 ### Reading data
 ```{r}
+setwd("C:\\Users\\Mateusz\\OneDrive\\Dokumenty\\GitHub\\mlpro")
 raw_data <- read.csv('regression\\data\\raw\\YearPredictionMSD.txt',
                      header = FALSE)
 ```
@@ -101,11 +102,50 @@ Having described the dataset we can follow the analysis and in the next points v
 
 
 ### Two-dimensional plots
+#### Correlation matrix
+An important area that should not be neglected in the process of building machine learning model is creating the correlation matrix based on which we will continue investigation regarding the two-dimensional plots. We have decided to learn more about the timbre split suggested by the authors. Based on that we can check whether average timbre or timbre covariance have stronger influence on the outcome variable.
 
 ```{r}
-ggplot(data = raw_data, aes(x = year)) +
-        geom_bar(stat = 'count', aes(y = ..prop..))
+corr_average <- timbre_average_data %>%
+        mutate(year = target_data) %>%
+        cor()
+ggcorrplot(corr_average, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
+
+
+
+
+
+
+Based on the correlation matrix we spot two variables that might be important in predicting the song release year V2 and V7. V7 is negatively correlated with the year which means that the higher the variable the lower the year.
+
+```{r}
+high_corr_columns <- corr_covariance %>%
+        as_tibble() %>%
+        mutate(row_name = c(timbre_covariance_data %>% names(), "year")) %>%
+        relocate(row_name) %>%
+        pivot_longer(-row_name) %>%
+        filter(name == 'year') %>%
+        filter(value > 0.05) %>%
+        pull(row_name)
+```
+Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater
+than chosen level of correlation. Interestingly it is set very low to 0.05 since the association is extremely low.
+```{r}
+corr_covariance <- timbre_covariance_data %>%
+        mutate(year = target_data) %>%
+        select(all_of(high_corr_columns)) %>%
+        cor()
+```
+```{r}
+ggcorrplot(corr_covariance,
+           hc.order = TRUE,
+           type = "lower",
+           lab = TRUE,
+           method = 'circle',
+           lab_size = 3)
+```
+
 
 ## Model
 
