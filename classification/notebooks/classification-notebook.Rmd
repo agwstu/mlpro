@@ -1,6 +1,6 @@
 ---
-title: classification
-subtitle: A short description of the project.
+title: Classification problem
+subtitle: Good/bad credit risk classification for people described by a set of attributes.
 author: "Your name (or your organization/company/team) Your email"
 bibliography: bibliography.bib
 link-citations: yes
