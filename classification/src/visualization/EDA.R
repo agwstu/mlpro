@@ -14,12 +14,6 @@ library(smbinning)
 
 #Agata - Loading Data
 df <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.csv")
-
-#Mateusz - Loading Data
-pacman::p_load(tidyverse)
-df <- read.csv("classification\\data\\raw\\dataset_31_credit-g.csv")
-
-
 ##############################################################################
 ########### EDA
 
