@@ -1,4 +1,4 @@
-###### Regresja ########
+###### Klasyfikacja ########
 ########################
 
 ###Loading data

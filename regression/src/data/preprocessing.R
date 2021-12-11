@@ -1,6 +1,6 @@
-#####################
-### Regresja ####
-#####################
+##################################
+###  Regression: Preprocessing ###
+##################################
 
 #install.packages("DescTools")
 
@@ -28,18 +28,21 @@ par(resetPar())
 par(xpd = T, mfrow=c(1,1))
 
 
-####Loading data 
+####Loading data : Agata
 
-YearPredictionMSD <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/YearPredictionMSD.txt", header=FALSE)
+dane <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/YearPredictionMSD.txt", header=FALSE)
 
-str(YearPredictionMSD)
+str(dane)
 ####wszystkie zmienne są numeryczne 
 #### nie ma nazw kolumn, będzie trzeba je nadać
 
-table(is.na(YearPredictionMSD))
+
+# Handling NAs 
+table(is.na(dane))
+#result:
 ### no NA's in data 
 
-dane <- as_tibble(YearPredictionMSD)
+dane <- as_tibble(dane)
 
 #Pre - analysis
 
@@ -56,6 +59,28 @@ hist(dane$V2, breaks="Scott")
 
 ##to bardzo długo chodzi, bo mamy dużo zmiennnych
 ## tutaj sa statystyki opisowe dla każdej zmiennej 
-desc_r <- Desc(dane)
+
+getwd()
+wd_eda <- "/Users/agatawytrykowska/Desktop/studia/magisterka/3sem/ML2/mlpro/regression/src/visualization"
+setwd(wda)
+
+## Opening pdf file to store charts
+pdf(file = "desc_stats_reg.pdf", paper = "a4")
+
+desc_r <- DescTools::Desc(dane)
+
+# one-dimentional plots  
+histogram <- apply(dane,2, function(x) hist(x, breaks = 100))
+
+# to bardzo dlugo sie mieli
+ecdf <- apply(dane, 2, function(x) plot(ecdf(x), verticals = TRUE))
+
+dev.off()
+
+XXL <- c(1:9, c(-1,1)*1e300)
+hh <- hist(XXL, "FD")
+
+
+
 
 ####gitgitgit
