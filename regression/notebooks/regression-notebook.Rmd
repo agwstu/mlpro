@@ -23,7 +23,8 @@ output:
 
 Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011, with the greatest number of observations in 2000s \cite{Bertin-Mahieux2011}. We downloaded it from the Machine Learning Repository \cite{Dua:2019}.
 ```{r}
-pacman::p_load(data.table, tidyverse, knitr, ggcorrplot)
+pacman::p_load(data.table, tidyverse, knitr,
+               GGally)
 ```
 
 ## Data Inspection
@@ -61,7 +62,7 @@ test_data <- raw_data %>% slice_tail(n = 51630)
 The dataset authors add that thanks to that split 'producer effect' will be avoided. The justification for that is t
 ```{r}
 covariates_data <- raw_data %>% select(-year)
-covariates_data %>% kable() %>% head()
+covariates_data %>% head() %>% kable()
 ```
 Next, we confirm that the remaining attributes correspond to the timbre covariates.
 ```{r}
@@ -76,10 +77,6 @@ timbre_covariance_data <- covariates_data %>%
 timbre_covariance_data %>% head()
 ```
 Two separate summaries are done for timbre average and covariance data.
-```{r}
-summary(timbre_average_data)
-```
-
 
 ### handling missing
 
@@ -99,8 +96,28 @@ Since there are 214 duplicates in the data we see that there is need to decide w
 
 Having described the dataset we can follow the analysis and in the next points visualized dataset including both target and features on which the model will be trained.
 
-
 ### Two-dimensional plots
+
+#### Number of songs across centuries
+For the first plot we have decided to squeeze the year variable based on the century.
+```{r}
+timbre_average_data %>%
+        mutate(year = target_data) %>%
+        mutate(century = if_else(year <= 2000, 'XX', 'XXI')) %>%
+        group_by(century) %>%
+        count() %>%
+        ggplot(aes(x = century, y = n)) +
+        geom_bar(stat = "identity") +
+        ggtitle('The songs count across centuries') +
+        xlab('Century') +
+        ylab('Count') +
+        theme_minimal() +
+        theme(legend.position = 'bottom')  +
+        guides(fill = guide_legend(nrow = 2,byrow = TRUE)) +
+        scale_fill_grey()
+```
+We see that the count of songs increase with the centuries, although, there are more years in the dataset, in XX century.
+
 #### Correlation matrix
 An important area that should not be neglected in the process of building machine learning model is creating the correlation matrix based on which we will continue investigation regarding the two-dimensional plots. We have decided to learn more about the timbre split suggested by the authors. Based on that we can check whether average timbre or timbre covariance have stronger influence on the outcome variable.
 
@@ -112,11 +129,12 @@ ggcorrplot(corr_average, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
 
 
-
-
-
-
 Based on the correlation matrix we spot two variables that might be important in predicting the song release year V2 and V7. V7 is negatively correlated with the year which means that the higher the variable the lower the year.
+```{r}
+corr_covariance <- timbre_covariance_data %>%
+        mutate(year = target_data) %>%
+        cor()
+```
 
 ```{r}
 high_corr_columns <- corr_covariance %>%
@@ -128,6 +146,7 @@ high_corr_columns <- corr_covariance %>%
         filter(value > 0.05) %>%
         pull(row_name)
 ```
+
 Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater
 than chosen level of correlation. Interestingly it is set very low to 0.05 since the association is extremely low.
 ```{r}
@@ -136,6 +155,7 @@ corr_covariance <- timbre_covariance_data %>%
         select(all_of(high_corr_columns)) %>%
         cor()
 ```
+
 ```{r}
 ggcorrplot(corr_covariance,
            hc.order = TRUE,
@@ -144,7 +164,25 @@ ggcorrplot(corr_covariance,
            method = 'circle',
            lab_size = 3)
 ```
+The highest correlation with the target variable is spotted between variable V21 and year. What is more the multicollinearity might be spotted for variable V15 and V21 with the correlation value 0.48.
 
+#### Statistical analysis
+```{r}
+source("regression\\src\\utils\\t_test_across_centuries.R")
+timbre_average_data_with_target <- timbre_average_data %>%
+        add_column(year = target_data)
+timbre_covariance_data_with_target <- timbre_covariance_data %>%
+        add_column(year = target_data)
+t_test_test_across_centuries(timbre_average_data_with_target,
+                             'V2')
+t_test_test_across_centuries(timbre_average_data_with_target,
+                             'V7')
+t_test_test_across_centuries(timbre_covariance_data_with_target,
+                             'V21')
+t_test_test_across_centuries(timbre_covariance_data_with_target,
+                             'V15')
+```
+We have show that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
 
 ## Model
 
