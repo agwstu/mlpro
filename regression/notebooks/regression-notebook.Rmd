@@ -2,7 +2,6 @@
 title: Regression problem
 subtitle: The release year prediction of the songs from the timbre features.
 author: "Mateusz Baryła & Agata Wytrykowska"
-bibliography: bibliography.bib
 link-citations: yes
 output:
   html_document:
@@ -24,7 +23,7 @@ output:
 Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011, with the greatest number of observations in 2000s \cite{Bertin-Mahieux2011}. We downloaded it from the Machine Learning Repository \cite{Dua:2019}.
 ```{r}
 pacman::p_load(data.table, tidyverse, knitr,
-               GGally)
+               GGally, ggcorrplot)
 ```
 
 ## Data Inspection
@@ -33,7 +32,7 @@ There are 515345 observations in the dataset. 90 attributes describe each and si
 
 ### Reading data
 ```{r}
-raw_data <- read.csv('regression\\data\\raw\\YearPredictionMSD.txt',
+raw_data <- read.csv('..\\\\data\\raw\\YearPredictionMSD.txt',
                      header = FALSE)
 ```
 ```{r}
@@ -168,7 +167,7 @@ The highest correlation with the target variable is spotted between variable V21
 
 #### Statistical analysis
 ```{r}
-source("regression\\src\\utils\\t_test_across_centuries.R")
+source("..\\src\\utils\\t_test_across_centuries.R")
 timbre_average_data_with_target <- timbre_average_data %>%
         add_column(year = target_data)
 timbre_covariance_data_with_target <- timbre_covariance_data %>%
