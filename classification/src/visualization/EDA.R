@@ -18,6 +18,18 @@ df <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.c
 ########### EDA
 
 
+###transformation of variables changing variables into factor
+str(df)
+sapply(df, table)
+
+df_f <- as.data.frame(unclass(df), stringsAsFactors = TRUE) # Convert all columns into factors
+str(df_f)
+
+df_f %>% as_tibble()
+
+df_f$class <- ifelse(df_f$class == "bad", 1, 0)
+
+str(df_f)
 #division variables into FACTORS and NUMERIC variables
 colnames(df)
 summary(df_f)
@@ -30,7 +42,7 @@ fact <- sapply(df_f, is.factor)
 df.f<-df_f[,fact]
 
 
-
+DescTools::Desc(df_f)
 
 
 # DISCRETIZATION - FINE CLASSING
@@ -47,12 +59,12 @@ percentile <- apply(X = df.n, MARGIN=2, FUN=function(x) round(quantile(x, seq(0.
 # it is important for smbinning(), function we would discuss later on
 
 # unique values per column
-unique<-apply(df.n, MARGIN=2, function(x) length(unique(x)))
+unique <- apply(df.n, MARGIN=2, function(x) length(unique(x)))
 
 # selecting only columns with more than 10 unique levels
-numeric<-colnames(df.n[which(unique>=10)])
+numeric <- colnames(df.n[which(unique>=10)])
 #<10 levels
-num_as_fact<-colnames(df.n[which(unique<10 & unique>1 )])
+num_as_fact <- colnames(df.n[which(unique<10 & unique>1 )])
 #single variance variables out?
 #sometimes missing as 2 level?
 
@@ -77,9 +89,9 @@ for (m in numeric) {
   df.n[,paste(m,"_fine", sep="")]<-cut(
     x=as.matrix(df.n[m]), 
     breaks=c(-Inf,unique(percentile[,m])), 
-    labels =c(paste("<=",unique(percentile[,m])))
-  ) 
-}
+    labels =c(paste("<=",unique(percentile[,m]))))
+
+  }
 
 df.f[,paste(num_as_fact,"_fine",sep="")]<-sapply(df.n[,num_as_fact],as.factor)
 
@@ -90,11 +102,9 @@ df.n
 
 # in smbinning 0 means bad, --> reverting definition of gb flag
 
-df.f[,"DEF"] <- ifelse(df.f$class == "good", 1, 0)
 
-
-df.n$def_woe <- (1- df.f$DEF)
-df.n$def <- df.f$DEF
+df.n$def_woe <- (1- df_f$class)
+df.n$class <- df_f$class
 
 #List for WoE etc.
 WOE<-list()
@@ -115,7 +125,7 @@ smbinning.eda(df.n, rounding = 3, pbar = 1)
 pdf(file="WoE_numeric.pdf",paper="a4")
 getwd()
 # Choice of vars to be analysed
-names.n<-colnames(df.n[,!names(df.n) %in% c(colnames(df.n_fine),"def","def_woe")])
+names.n<-colnames(df.n[,!names(df.n) %in% c(colnames(df.n_fine),"class","def_woe")])
 
 #Set up progress bar
 
@@ -206,7 +216,7 @@ dev.off()
 
 f <- function(x) factor(x, levels= unique(x))
 
-f.df <- as.tibble(df) %>%
+f.df <- as_tibble(df) %>%
   mutate_if(is.character, f) %>%
   mutate_if(is.factor, as.numeric) 
 
