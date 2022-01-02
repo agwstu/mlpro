@@ -19,17 +19,185 @@ output:
       highligt: pygments
 ---
 
-# regression
-
-by: Your name (or your organization/company/team) Your email
-
 ## Introduction*
+
+Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011. Most of the observations relate to the  2000s \cite{Bertin-Mahieux2011}. We downloaded it from the Machine Learning Repository \cite{Dua:2019}.
+
+```{r}
+pacman::p_load(data.table, tidyverse, knitr,
+               GGally)
+```
+
+## Data Inspection
+There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall,timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack \cite{Bertin-Mahieux2013}.
+
+
+
+## Data Preprocessing
+
+### Reading data
+```{r}
+raw_data <- read.csv('regression\\data\\raw\\YearPredictionMSD.txt',
+                     header = FALSE)
+```
+```{r}
+raw_data %>% head() %>% kable()
+```
+The first column in the dataset correspond to the year that will be predicted from the features. We rename it for the sake of the modelling purposes. With the MSD many tasks can be addressed, however the song release year brings many practical applications and there are not a lot of research papers that relate to this prediction problem. Only audio features are used in this problem which is justified with the fact that listeners are often fond of music from certain periods of their lives. Another reason might be the evolution of timbre across years.
+
+```{r}
+raw_data <- raw_data %>%
+        rename(year = V1)
+raw_data %>% head() %>% kable()
+```
+In the next step we split the dataset into the attributes and the target variable. Thanks to that we will not mix the attributes in the feature engineering process.
+```{r}
+target_data <- raw_data %>% select(year)
+target_data %>% head()
+```
+The authors in the main article mapped the year values using linear mapping to [0,1] range \cite{main_article}. We follow the convention in the analysis below.
+
+```{r}
+# mapping target to [0,1] range
+range_to_0_1 <- function(vec) {
+  (vec - min(vec)) / (max(vec) - min(vec))
+}
+
+target_data_scaled %>%
+        mutate(year_scaled = range_to_0_1(year)) %>%
+        select(year_scaled) %>%
+        head() %>%
+        kable()
+```
+
+The result might suggest that the dataset is somehow not completely random. It is confirmed with the fact that the following train / test split should be respected. First 463 715 examples should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
+
+
+```{r}
+train_data <- raw_data %>% slice_head(n = 463715)
+test_data <- raw_data %>% slice_tail(n = 51630)
+```
+The dataset authors add that thanks to that split 'producer effect' will be avoided. The justification for that is t
+
+```{r}
+covariates_data <- raw_data %>% select(-year)
+covariates_data %>% head() %>% kable()
+```
+Next, we confirm that the remaining attributes correspond to the timbre covariates.
+```{r}
+timbre_average_data <- covariates_data %>%
+        select(V2:V13)
+timbre_average_data %>% head()
+```
+We needed to investigate what the timbre in the sound analysis actually means. It is described as everything that can be differentiated between two different tracks by the listener having kept the same pitch, spatial location and loudness and refers to the perceptual quality of a sound and color. "Brightness", "clarity", "harshness", "fullness" and "noisiness" are frequently used adjectives that are associated with the timbre word \cite{Allen2018}.
+```{r}
+timbre_covariance_data <- covariates_data %>%
+        select(V14:V91)
+timbre_covariance_data %>% head()
+```
+Two separate summaries are done for timbre average and covariance data.
+
+### handling missing
+
+```{r}
+raw_data %>%
+        summarise(across(everything(), ~sum(is.na(.))))
+```
+There are no missing values across columns and in the whole dataset. This is an important insight that will allow for an easier later phases of the project e.g exploratory data analysis and modelling.
+
+=======
+## Exploratory Data Analysis
+
+Having described the dataset we can follow the analysis and in the next points visualized dataset including both target and features on which the model will be trained.
+
+### Two-dimensional plots
+
+#### Number of songs across centuries
+For the first plot we have decided to squeeze the year variable based on the century because the distribution of the songs across years is highly nonuniform.
+```{r}
+timbre_average_data %>%
+        mutate(year = target_data) %>%
+        mutate(century = if_else(year <= 2000, 'XX', 'XXI')) %>%
+        group_by(century) %>%
+        count() %>%
+        ggplot(aes(x = century, y = n)) +
+        geom_bar(stat = "identity") +
+        ggtitle('The songs count across centuries') +
+        xlab('Century') +
+        ylab('Count') +
+        theme_minimal() +
+        theme(legend.position = 'bottom')  +
+        guides(fill = guide_legend(nrow = 2,byrow = TRUE)) +
+        scale_fill_grey()
+```
+We see that the count of songs increase with the centuries, although, there are more years in the dataset, in XX century.
+
+#### Boxplot across decaes
+
+```{r}
+timbre_average_data %>%
+        mutate(year = target_data %>% pull(year)) %>%
+        mutate(decade = as.factor(floor(year/10)*10)) %>%
+        rename(loudness = V2) %>%
+        select(loudness, decade) %>%
+        ggplot(aes(x= decade, y = loudness, group=decade, fill = decade)) +
+        geom_boxplot()
+```
+Increase in loudness is spotted across decades. People listen more to louder music nowadays.
+
+#### Correlation matrix
+An important area that should not be neglected in the process of building machine learning model is creating the correlation matrix based on which we will continue investigation regarding the two-dimensional plots. We have decided to learn more about the timbre split suggested by the authors. Based on that we can check whether average timbre or timbre covariance have stronger influence on the outcome variable.
+
+```{r}
+corr_average <- timbre_average_data %>%
+        mutate(year = target_data) %>%
+        cor()
+ggcorrplot(corr_average, hc.order = TRUE, type = "lower", lab = TRUE)
+```
+
+
+Based on the correlation matrix we spot two variables that might be important in predicting the song release year V2 and V7. V7 is negatively correlated with the year which means that the higher the variable the lower the year.
+```{r}
+corr_covariance <- timbre_covariance_data %>%
+        mutate(year = target_data) %>%
+        cor()
+```
+
+```{r}
+high_corr_columns <- corr_covariance %>%
+        as_tibble() %>%
+        mutate(row_name = c(timbre_covariance_data %>% names(), "year")) %>%
+        relocate(row_name) %>%
+        pivot_longer(-row_name) %>%
+        filter(name == 'year') %>%
+        filter(value > 0.05) %>%
+        pull(row_name)
+```
 
 A short description of the project.
 
 ## Data Inspection
 
 ## Data Preprocessing
+#### Statistical analysis
+```{r}
+source("regression\\src\\utils\\t_test_across_centuries.R")
+timbre_average_data_with_target <- timbre_average_data %>%
+        add_column(year = target_data)
+timbre_covariance_data_with_target <- timbre_covariance_data %>%
+        add_column(year = target_data)
+t_test_test_across_centuries(timbre_average_data_with_target,
+                             'V2')
+t_test_test_across_centuries(timbre_average_data_with_target,
+                             'V7')
+t_test_test_across_centuries(timbre_covariance_data_with_target,
+                             'V21')
+t_test_test_across_centuries(timbre_covariance_data_with_target,
+                             'V15')
+```
+We have shown that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
+
+## Variable Transformation
 
 ## Model
 
