@@ -1,7 +1,7 @@
 ---
-title: regression
-subtitle: A short description of the project.
-author: "Your name (or your organization/company/team) Your email"
+title: Regression problem
+subtitle: The release year prediction of the songs from the timbre features.
+author: "Mateusz Baryła & Agata Wytrykowska"
 bibliography: bibliography.bib
 link-citations: yes
 output:
@@ -19,7 +19,7 @@ output:
       highligt: pygments
 ---
 
-## Introduction*
+## Introduction
 
 Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011. Most of the observations relate to the  2000s \cite{Bertin-Mahieux2011}. We downloaded it from the Machine Learning Repository \cite{Dua:2019}.
 
@@ -174,11 +174,26 @@ high_corr_columns <- corr_covariance %>%
         pull(row_name)
 ```
 
-A short description of the project.
 
-## Data Inspection
+Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater
+than chosen level of correlation. Interestingly it is set very low to 0.05 since the association is extremely low.
+```{r}
+corr_covariance <- timbre_covariance_data %>%
+        mutate(year = target_data) %>%
+        select(all_of(high_corr_columns)) %>%
+        cor()
+```
 
-## Data Preprocessing
+```{r}
+ggcorrplot(corr_covariance,
+           hc.order = TRUE,
+           type = "lower",
+           lab = TRUE,
+           method = 'circle',
+           lab_size = 3)
+```
+The highest correlation with the target variable is spotted between variable V21 and year. What is more the multicollinearity might be spotted for variable V15 and V21 with the correlation value 0.48.
+
 #### Statistical analysis
 ```{r}
 source("regression\\src\\utils\\t_test_across_centuries.R")
@@ -195,9 +210,9 @@ t_test_test_across_centuries(timbre_covariance_data_with_target,
 t_test_test_across_centuries(timbre_covariance_data_with_target,
                              'V15')
 ```
-We have shown that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
+We have show that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
 
-## Variable Transformation
+
 
 ## Model
 
