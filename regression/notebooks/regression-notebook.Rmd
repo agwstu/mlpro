@@ -2,7 +2,6 @@
 title: Regression problem
 subtitle: The release year prediction of the songs from the timbre features.
 author: "Mateusz Baryła & Agata Wytrykowska"
-bibliography: bibliography.bib
 link-citations: yes
 output:
   html_document:
@@ -25,7 +24,7 @@ Audio features play a significant role in the prediction of the song release yea
 
 ```{r}
 pacman::p_load(data.table, tidyverse, knitr,
-               GGally)
+               GGally, ggcorrplot)
 ```
 
 ## Data Inspection
@@ -37,7 +36,7 @@ There are 515345 observations in the dataset. 90 attributes describe each and si
 
 ### Reading data
 ```{r}
-raw_data <- read.csv('regression\\data\\raw\\YearPredictionMSD.txt',
+raw_data <- read.csv('..\\\\data\\raw\\YearPredictionMSD.txt',
                      header = FALSE)
 ```
 ```{r}
@@ -196,7 +195,7 @@ The highest correlation with the target variable is spotted between variable V21
 
 #### Statistical analysis
 ```{r}
-source("regression\\src\\utils\\t_test_across_centuries.R")
+source("..\\src\\utils\\t_test_across_centuries.R")
 timbre_average_data_with_target <- timbre_average_data %>%
         add_column(year = target_data)
 timbre_covariance_data_with_target <- timbre_covariance_data %>%
