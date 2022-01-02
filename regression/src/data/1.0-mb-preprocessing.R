@@ -52,3 +52,14 @@ raw_data %>% summarise(across(everything(), ~sum(is.na(.))))
 (raw_data %>% dim())[1] - n_distinct(raw_data)
 
 # There 214 duplicates in the data
+
+# mapping target to [0,1] range
+range_to_0_1 <- function(vec) {
+  (vec - min(vec)) / (max(vec) - min(vec))
+}
+
+target_data_scaled %>%
+  mutate(year_scaled = range_to_0_1(year)) %>%
+  select(year_scaled) %>%
+  write.csv("regression\\data\\interim\\target_data_scaled.csv",
+            row.names = FALSE)
