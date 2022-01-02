@@ -1,4 +1,5 @@
-pacman::p_load(data.table, tidyverse, GGally, ggcorrplot)
+pacman::p_load(data.table, tidyverse, GGally, ggcorrplot, lubridate,
+               ggtext)
 
 timbre_average_data <- read.csv("regression\\data\\interim\\timbre_average_data.csv")
 
@@ -43,3 +44,11 @@ timbre_average_data %>%
   theme(legend.position = 'bottom')  +
   guides(fill = guide_legend(nrow = 2,byrow = TRUE)) +
   scale_fill_grey()
+
+timbre_average_data %>%
+  mutate(year = target_data %>% pull(year)) %>%
+  mutate(decade = as.factor(floor(year/10)*10)) %>%
+  rename(loudness = V2) %>%
+  select(loudness, decade) %>%
+  ggplot(aes(x= decade, y = loudness, group=decade, fill = decade)) +
+  geom_boxplot()
