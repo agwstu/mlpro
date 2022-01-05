@@ -36,8 +36,7 @@ There are 515345 observations in the dataset. 90 attributes describe each and si
 
 ### Reading data
 ```{r}
-raw_data <- read.csv('..\\\\data\\raw\\YearPredictionMSD.txt',
-                     header = FALSE)
+raw_data <- read.csv2('..\\data\\raw\\YearPredictionMSD_sample.txt')
 ```
 ```{r}
 raw_data %>% head() %>% kable()
@@ -46,7 +45,8 @@ The first column in the dataset correspond to the year that will be predicted fr
 
 ```{r}
 raw_data <- raw_data %>%
-        rename(year = V1)
+        rename(year = V1) %>%
+        mutate(year = as.numeric(year))
 raw_data %>% head() %>% kable()
 ```
 In the next step we split the dataset into the attributes and the target variable. Thanks to that we will not mix the attributes in the feature engineering process.
@@ -62,11 +62,7 @@ range_to_0_1 <- function(vec) {
   (vec - min(vec)) / (max(vec) - min(vec))
 }
 
-target_data_scaled %>%
-        mutate(year_scaled = range_to_0_1(year)) %>%
-        select(year_scaled) %>%
-        head() %>%
-        kable()
+target_data$year_scaled <- range_to_0_1(target_data$year)
 ```
 
 The result might suggest that the dataset is somehow not completely random. It is confirmed with the fact that the following train / test split should be respected. First 463 715 examples should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
@@ -115,19 +111,19 @@ Having described the dataset we can follow the analysis and in the next points v
 For the first plot we have decided to squeeze the year variable based on the century because the distribution of the songs across years is highly nonuniform.
 ```{r}
 timbre_average_data %>%
-        mutate(year = target_data) %>%
-        mutate(century = if_else(year <= 2000, 'XX', 'XXI')) %>%
-        group_by(century) %>%
-        count() %>%
-        ggplot(aes(x = century, y = n)) +
-        geom_bar(stat = "identity") +
-        ggtitle('The songs count across centuries') +
-        xlab('Century') +
-        ylab('Count') +
-        theme_minimal() +
-        theme(legend.position = 'bottom')  +
-        guides(fill = guide_legend(nrow = 2,byrow = TRUE)) +
-        scale_fill_grey()
+    mutate(year = target_data$year) %>%
+    mutate(century = if_else(year <= 2000, 'XX', 'XXI')) %>%
+    group_by(century) %>%
+    count() %>%
+    ggplot(aes(x = century, y = n)) +
+    geom_bar(stat = "identity") +
+    ggtitle('The songs count across centuries') +
+    xlab('Century') +
+    ylab('Count') +
+    theme_minimal() +
+    theme(legend.position = 'bottom')  +
+    guides(fill = guide_legend(nrow = 2,byrow = TRUE)) +
+    scale_fill_grey()
 ```
 We see that the count of songs increase with the centuries, although, there are more years in the dataset, in XX century.
 
@@ -149,7 +145,7 @@ An important area that should not be neglected in the process of building machin
 
 ```{r}
 corr_average <- timbre_average_data %>%
-        mutate(year = target_data) %>%
+        mutate(year = target_data$year) %>%
         cor()
 ggcorrplot(corr_average, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
@@ -158,7 +154,7 @@ ggcorrplot(corr_average, hc.order = TRUE, type = "lower", lab = TRUE)
 Based on the correlation matrix we spot two variables that might be important in predicting the song release year V2 and V7. V7 is negatively correlated with the year which means that the higher the variable the lower the year.
 ```{r}
 corr_covariance <- timbre_covariance_data %>%
-        mutate(year = target_data) %>%
+        mutate(year = target_data$year) %>%
         cor()
 ```
 
@@ -211,7 +207,23 @@ t_test_test_across_centuries(timbre_covariance_data_with_target,
 ```
 We have show that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
 
+## Variable transformation
 
+```{r}
+source('..\\src\\utils\\fit_rf_model_with_recipe.R')
+simple_recipe_with_log <-
+        recipe(year ~ .,
+               data = timbre_covariance_with_target_data) %>%
+                step_log(V15, base = 10)
+fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_data)
+```
+```{r}
+simple_recipe_with_log <-
+        recipe(year ~ .,
+               data = timbre_covariance_with_target_data) %>%
+                step_log(V15, base = 10)
+fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_data)
+```
 
 ## Model
 
