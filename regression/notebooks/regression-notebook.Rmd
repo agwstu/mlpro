@@ -24,13 +24,12 @@ Audio features play a significant role in the prediction of the song release yea
 
 ```{r}
 pacman::p_load(data.table, tidyverse, knitr,
-               GGally, ggcorrplot)
+               GGally, ggcorrplot, tidymodels,
+               Rcpp, ranger, kableExtra)
 ```
 
 ## Data Inspection
 There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall,timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack \cite{Bertin-Mahieux2013}.
-
-
 
 ## Data Preprocessing
 
@@ -39,7 +38,8 @@ There are 515345 observations in the dataset. 90 attributes describe each and si
 raw_data <- read.csv2('..\\data\\raw\\YearPredictionMSD_sample.txt')
 ```
 ```{r}
-raw_data %>% head() %>% kable()
+source('..\\src\\utils\\fit_table.r')
+raw_data %>% fit_table()
 ```
 The first column in the dataset correspond to the year that will be predicted from the features. We rename it for the sake of the modelling purposes. With the MSD many tasks can be addressed, however the song release year brings many practical applications and there are not a lot of research papers that relate to this prediction problem. Only audio features are used in this problem which is justified with the fact that listeners are often fond of music from certain periods of their lives. Another reason might be the evolution of timbre across years.
 
@@ -47,12 +47,12 @@ The first column in the dataset correspond to the year that will be predicted fr
 raw_data <- raw_data %>%
         rename(year = V1) %>%
         mutate(year = as.numeric(year))
-raw_data %>% head() %>% kable()
+raw_data %>% fit_table()
 ```
 In the next step we split the dataset into the attributes and the target variable. Thanks to that we will not mix the attributes in the feature engineering process.
 ```{r}
 target_data <- raw_data %>% select(year)
-target_data %>% head()
+target_data %>% fit_table()
 ```
 The authors in the main article mapped the year values using linear mapping to [0,1] range \cite{main_article}. We follow the convention in the analysis below.
 
@@ -76,19 +76,19 @@ The dataset authors add that thanks to that split 'producer effect' will be avoi
 
 ```{r}
 covariates_data <- raw_data %>% select(-year)
-covariates_data %>% head() %>% kable()
+covariates_data %>% fit_table()
 ```
 Next, we confirm that the remaining attributes correspond to the timbre covariates.
 ```{r}
 timbre_average_data <- covariates_data %>%
         select(V2:V13)
-timbre_average_data %>% head()
+timbre_average_data %>% fit_table()
 ```
 We needed to investigate what the timbre in the sound analysis actually means. It is described as everything that can be differentiated between two different tracks by the listener having kept the same pitch, spatial location and loudness and refers to the perceptual quality of a sound and color. "Brightness", "clarity", "harshness", "fullness" and "noisiness" are frequently used adjectives that are associated with the timbre word \cite{Allen2018}.
 ```{r}
 timbre_covariance_data <- covariates_data %>%
         select(V14:V91)
-timbre_covariance_data %>% head()
+timbre_covariance_data %>% fit_table()
 ```
 Two separate summaries are done for timbre average and covariance data.
 
@@ -125,6 +125,7 @@ timbre_average_data %>%
     guides(fill = guide_legend(nrow = 2,byrow = TRUE)) +
     scale_fill_grey()
 ```
+
 We see that the count of songs increase with the centuries, although, there are more years in the dataset, in XX century.
 
 #### Boxplot across decaes
@@ -138,6 +139,7 @@ timbre_average_data %>%
         ggplot(aes(x= decade, y = loudness, group=decade, fill = decade)) +
         geom_boxplot()
 ```
+
 Increase in loudness is spotted across decades. People listen more to louder music nowadays.
 
 #### Correlation matrix
@@ -172,9 +174,14 @@ high_corr_columns <- corr_covariance %>%
 
 Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater
 than chosen level of correlation. Interestingly it is set very low to 0.05 since the association is extremely low.
+
 ```{r}
-corr_covariance <- timbre_covariance_data %>%
-        mutate(year = target_data) %>%
+timbre_covariance_with_target_data <-
+        timbre_covariance_data %>%
+        mutate(year = target_data$year)
+```
+```{r}
+corr_covariance <-  timbre_covariance_with_target_data %>%
         select(all_of(high_corr_columns)) %>%
         cor()
 ```
@@ -187,6 +194,7 @@ ggcorrplot(corr_covariance,
            method = 'circle',
            lab_size = 3)
 ```
+
 The highest correlation with the target variable is spotted between variable V21 and year. What is more the multicollinearity might be spotted for variable V15 and V21 with the correlation value 0.48.
 
 #### Statistical analysis
@@ -218,10 +226,10 @@ simple_recipe_with_log <-
 fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_data)
 ```
 ```{r}
-simple_recipe_with_log <-
+simple_recipe_with_interact <-
         recipe(year ~ .,
                data = timbre_covariance_with_target_data) %>%
-                step_log(V15, base = 10)
+                step_interact(terms = ~V14:V91)
 fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_data)
 ```
 
@@ -236,5 +244,8 @@ fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_d
 
 ## Conclusion
 
+
+
 ## References
+
 <!-- This is required to attach the bibliography -->
