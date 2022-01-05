@@ -18,22 +18,22 @@ output:
       highligt: pygments
 ---
 
-## Introduction
+# Introduction
 
 Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011. Most of the observations relate to the  2000s \cite{Bertin-Mahieux2011}. We downloaded it from the Machine Learning Repository \cite{Dua:2019}.
 
 ```{r}
 pacman::p_load(data.table, tidyverse, knitr,
                GGally, ggcorrplot, tidymodels,
-               Rcpp, ranger, kableExtra)
+               Rcpp, ranger, kableExtra, tree)
 ```
 
-## Data Inspection
+# Data Inspection
 There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall,timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack \cite{Bertin-Mahieux2013}.
 
-## Data Preprocessing
+# Data Preprocessing
 
-### Reading data
+## Reading data
 ```{r}
 raw_data <- read.csv2('..\\data\\raw\\YearPredictionMSD_sample.txt')
 ```
@@ -42,6 +42,8 @@ source('..\\src\\utils\\fit_table.r')
 raw_data %>% fit_table()
 ```
 The first column in the dataset correspond to the year that will be predicted from the features. We rename it for the sake of the modelling purposes. With the MSD many tasks can be addressed, however the song release year brings many practical applications and there are not a lot of research papers that relate to this prediction problem. Only audio features are used in this problem which is justified with the fact that listeners are often fond of music from certain periods of their lives. Another reason might be the evolution of timbre across years.
+
+## Renaming columns
 
 ```{r}
 raw_data <- raw_data %>%
@@ -54,6 +56,8 @@ In the next step we split the dataset into the attributes and the target variabl
 target_data <- raw_data %>% select(year)
 target_data %>% fit_table()
 ```
+## Scaling
+
 The authors in the main article mapped the year values using linear mapping to [0,1] range \cite{main_article}. We follow the convention in the analysis below.
 
 ```{r}
@@ -65,8 +69,9 @@ range_to_0_1 <- function(vec) {
 target_data$year_scaled <- range_to_0_1(target_data$year)
 ```
 
-The result might suggest that the dataset is somehow not completely random. It is confirmed with the fact that the following train / test split should be respected. First 463 715 examples should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
+## Splitting dataset
 
+The result might suggest that the dataset is somehow not completely random. It is confirmed with the fact that the following train / test split should be respected. First 463 715 examples should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
 
 ```{r}
 train_data <- raw_data %>% slice_head(n = 463715)
@@ -84,15 +89,28 @@ timbre_average_data <- covariates_data %>%
         select(V2:V13)
 timbre_average_data %>% fit_table()
 ```
+
 We needed to investigate what the timbre in the sound analysis actually means. It is described as everything that can be differentiated between two different tracks by the listener having kept the same pitch, spatial location and loudness and refers to the perceptual quality of a sound and color. "Brightness", "clarity", "harshness", "fullness" and "noisiness" are frequently used adjectives that are associated with the timbre word \cite{Allen2018}.
+
 ```{r}
 timbre_covariance_data <- covariates_data %>%
         select(V14:V91)
 timbre_covariance_data %>% fit_table()
 ```
-Two separate summaries are done for timbre average and covariance data.
 
-### handling missing
+Two separate summaries are done for timbre average and covariance data. For later modelling purposes two separate DataFrames with target data are specified as well.
+
+```{r}
+timbre_average_with_target_data <- timbre_average_data %>%
+        add_column(year = target_data %>% pull(year),
+                   year_scaled = target_data %>% pull(year_scaled))
+
+timbre_covariance_with_target_data <- timbre_covariance_data %>%
+        add_column(year = target_data %>% pull(year),
+                   year_scaled = target_data %>% pull(year_scaled))
+```
+
+## Handling missing values
 
 ```{r}
 raw_data %>%
@@ -100,14 +118,13 @@ raw_data %>%
 ```
 There are no missing values across columns and in the whole dataset. This is an important insight that will allow for an easier later phases of the project e.g exploratory data analysis and modelling.
 
-=======
-## Exploratory Data Analysis
+# Exploratory Data Analysis
 
 Having described the dataset we can follow the analysis and in the next points visualized dataset including both target and features on which the model will be trained.
 
-### Two-dimensional plots
+## Two-dimensional plots
 
-#### Number of songs across centuries
+### Number of songs across centuries
 For the first plot we have decided to squeeze the year variable based on the century because the distribution of the songs across years is highly nonuniform.
 ```{r}
 timbre_average_data %>%
@@ -128,7 +145,7 @@ timbre_average_data %>%
 
 We see that the count of songs increase with the centuries, although, there are more years in the dataset, in XX century.
 
-#### Boxplot across decaes
+### Loudness across decades
 
 ```{r}
 timbre_average_data %>%
@@ -140,9 +157,9 @@ timbre_average_data %>%
         geom_boxplot()
 ```
 
-Increase in loudness is spotted across decades. People listen more to louder music nowadays.
+Increase in loudness is spotted across decades. Nowadyas people listen more to louder music.
 
-#### Correlation matrix
+### Correlation matrix
 An important area that should not be neglected in the process of building machine learning model is creating the correlation matrix based on which we will continue investigation regarding the two-dimensional plots. We have decided to learn more about the timbre split suggested by the authors. Based on that we can check whether average timbre or timbre covariance have stronger influence on the outcome variable.
 
 ```{r}
@@ -152,8 +169,8 @@ corr_average <- timbre_average_data %>%
 ggcorrplot(corr_average, hc.order = TRUE, type = "lower", lab = TRUE)
 ```
 
-
 Based on the correlation matrix we spot two variables that might be important in predicting the song release year V2 and V7. V7 is negatively correlated with the year which means that the higher the variable the lower the year.
+
 ```{r}
 corr_covariance <- timbre_covariance_data %>%
         mutate(year = target_data$year) %>%
@@ -172,14 +189,8 @@ high_corr_columns <- corr_covariance %>%
 ```
 
 
-Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater
-than chosen level of correlation. Interestingly it is set very low to 0.05 since the association is extremely low.
+Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater than chosen level of correlation. Interestingly it is set very low to 0.05 since the association is extremely low.
 
-```{r}
-timbre_covariance_with_target_data <-
-        timbre_covariance_data %>%
-        mutate(year = target_data$year)
-```
 ```{r}
 corr_covariance <-  timbre_covariance_with_target_data %>%
         select(all_of(high_corr_columns)) %>%
@@ -197,55 +208,104 @@ ggcorrplot(corr_covariance,
 
 The highest correlation with the target variable is spotted between variable V21 and year. What is more the multicollinearity might be spotted for variable V15 and V21 with the correlation value 0.48.
 
-#### Statistical analysis
+## Statistical analysis
 ```{r}
 source("..\\src\\utils\\t_test_across_centuries.R")
-timbre_average_data_with_target <- timbre_average_data %>%
-        add_column(year = target_data)
-timbre_covariance_data_with_target <- timbre_covariance_data %>%
-        add_column(year = target_data)
-t_test_test_across_centuries(timbre_average_data_with_target,
+t_test_test_across_centuries(timbre_average_with_target_data,
                              'V2')
-t_test_test_across_centuries(timbre_average_data_with_target,
+t_test_test_across_centuries(timbre_average_with_target_data,
                              'V7')
-t_test_test_across_centuries(timbre_covariance_data_with_target,
+t_test_test_across_centuries(timbre_covariance_with_target_data,
                              'V21')
-t_test_test_across_centuries(timbre_covariance_data_with_target,
+t_test_test_across_centuries(timbre_covariance_with_target_data,
                              'V15')
 ```
 We have show that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
 
-## Variable transformation
+# Variable transformation
+
+## Logarithmic transformation
+
+```{r}
+timbre_covariance_with_target_for_modelling_data <-
+  timbre_covariance_with_target_data %>%
+          select(-year) %>%
+          slice_head(n = 463715)
+```
+```{r}
+timbre_average_with_target_for_modelling_data <-
+    timbre_average_with_target_data %>%
+            select(-year) %>%
+            slice_tail(n = 51630)
+```
 
 ```{r}
 source('..\\src\\utils\\fit_rf_model_with_recipe.R')
 simple_recipe_with_log <-
-        recipe(year ~ .,
-               data = timbre_covariance_with_target_data) %>%
+        recipe(year_scaled ~ .,
+               data = timbre_covariance_with_target_for_modelling_data) %>%
                 step_log(V15, base = 10)
-fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_data)
 ```
+## Interactions
+
 ```{r}
 simple_recipe_with_interact <-
-        recipe(year ~ .,
-               data = timbre_covariance_with_target_data) %>%
+        recipe(year_scaled ~ .,
+               data = timbre_covariance_with_target_for_modelling_data) %>%
                 step_interact(terms = ~V14:V91)
-fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_data)
 ```
 
-## Model
+# Variable selection
 
-## Diagnostics
+# Model
+
+## tree model
+
+Firstly, all the covariance and average predictors are considered separately. We would like to understand at this level of aggregation their level of contribution to the overall score.
+
+
+```{r}
+first_model_formula <- year_scaled ~ .
+cov_tree <- tree(first_model_formula, timbre_covariance_with_target_for_modelling_data)
+avg_tree <- tree(first_model_formula, timbre_average_with_target_for_modelling_data)
+```
+```{r}
+summary(cov_tree)
+```
+```{r}
+plot(cov_tree)
+text(cov_tree, pretty = 0)
+```
+```{r}
+summary(avg_tree)
+```
+
+
+
+```{r}
+plot(avg_tree)
+text(avg_tree, pretty = 0)
+```
+Controlling for size of trees
+```{r}
+
+```
+## Model with transformed variables
+```{r}
+fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_for_modelling_data)
+
+fit_rf_model_with_recipe(simple_recipe_with_interact, timbre_covariance_with_target_for_modelling_data)
+```
+
+# Diagnostics
 <!-- Residuals Error Checking -->
 
-## Forecast
+# Forecast
 
-## Analysis
+# Analysis
 
-## Conclusion
+# Conclusion
 
-
-
-## References
+# References
 
 <!-- This is required to attach the bibliography -->
