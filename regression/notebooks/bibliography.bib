@@ -1,36 +1,156 @@
-
-# harvard style: https://www.lib.rmit.edu.au/easy-cite/
-@MISC {tag,
-    TITLE = {Title},
-    AUTHOR = {Author Name},
-    NOTE = {NOTE)},
-    URL = {https://botbotdot.com}
+@article{Bertin-Mahieux2011,
+abstract = {We introduce the Million Song Dataset, a freely-available collection of audio features and metadata for a million contemporary popular music tracks. We describe its creation process, its content, and its possible uses. Attractive features of the Million Song Database include the range of existing resources to which it is linked, and the fact that it is the largest current research dataset in our field. As an illustration, we present year prediction as an example application, a task that has, until now, been difficult to study owing to the absence of a large set of suitable data. We show positive results on year prediction, and discuss more generally the future development of the dataset. {\textcopyright} 2011 International Society for Music Information Retrieval.},
+author = {Bertin-Mahieux, Thierry and Ellis, Daniel P.W. and Whitman, Brian and Lamere, Paul},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Bertin-Mahieux et al. - 2011 - The million song dataset(2).pdf:pdf},
+isbn = {9780615548654},
+journal = {Proceedings of the 12th International Society for Music Information Retrieval Conference, ISMIR 2011},
+mendeley-groups = {ML2},
+number = {July},
+pages = {591--596},
+title = {{The million song dataset}},
+year = {2011}
 }
-# reference in Rmarkdown with [@tag]
-
-# aka Bibleography. `References` is used by Rmarkdown: https://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html
-
-# Website: direct quote:
-# between single quotes, add page number / para or heading
-# Eg. The tables are intended 'to aid technical ... schedule' (World Health Organization 2014, para. 8).
-
-# Website paraphrasing:
-# Eg. For immunization program ... (World Health Organization 2014).
-# Bibleography:
-# World Health Organization 2014, WHO recommendations for routine immunization - summary tables, World Health Organization, viewed 1 May 2014, <http://www.who.int/immunization/policy/immunization_tables/en/>.
-
-# cite like this: 
-#	Figure
-#	```{r figure_cap, fig.cap=figure_cap}
-#	# code
-#	figure_cap <- fig_nums("figure_cap", "ipsum lorem")
-#	```
-#	(`r citef('figure_cap')`)
-#
-#	Table
-#	```{r table_cite, fig.cap=table_cite}
-#	# code
-#	table_cite <- table_nums("table_cite", "ipsum lorem")
-#	```
-#	(`r citet('table_cite')`)
-
+@book{Kerja1967,
+abstract = {Seiring dengan kemajuan ilmu pengetahuan dan teknologi yang menjadi pusat perhatian dunia. Maka manusia dituntut untuk menciptakan peralatan-peralatan canggih untuk teknologi muktahir. Baik itu dalam bidang bisnis, perdagangan, kesehatan, militer, pendidikan, komunikasi dan budaya maupun bidang-bidang lainnya. Maka teknologi ini membawa perubahan pada peralatan-peralatan yang dulunya bekerja secara analog mulai dikembangkan secara digital, dan bahkan yang bekerjanya secara manual sekarang banyak dikembangkan secara otomatis, seperti kamera digital, handycam, dan sebagainya, dalam pembacaan pengukuran juga sudah dikembangkan ke dalam teknik digital. Contohnya perangkat Load Cell. Dan keuntungan menggunakan Load Cell adalah untuk mempermudah dalam pembacaan data untuk meminimalkan kesalahan dalam pembacaan data yang disebabkan adanya human error.Pada pemilihan Load Cell bertujuan untuk memilih kecocokan dalam membuat rancang bangun alat uji tarik kapasitas 3 ton, dimana dalam pemilihan ini kami memilih jenis load cell “S” karna alat yang kita rancang adalah uji tarik bukan uji tekan. Dengan kapasitas load cell 5 ton. Untuk membuat jarak aman dalam pengujian specimen ST41. Load Cell menggunakan system perangkat elektronik pengolahan data yang menjadi sebuah kurva tegangan regangan. Data-data yang diperoleh tersebut berupa besarnya pembebanan hasil dari pengujian specimen ST41. Kata},
+author = {Kerja, Elastisitas Penyerapan Tenaga},
+booktitle = {Angewandte Chemie International Edition, 6(11), 951–952.},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Kerja - 1967 - 済無No Title No Title No Title.pdf:pdf},
+isbn = {9781782162148},
+keywords = {economic growth,elasticity of employment,employment absorption},
+mendeley-groups = {ML2},
+number = {April},
+pages = {15--38},
+title = {{済無No Title No Title No Title}},
+volume = {13},
+year = {1967}
+}
+@article{Sill2009,
+abstract = {Ensemble methods, such as stacking, are designed to boost predictive accuracy by blending the predictions of multiple machine learning models. Recent work has shown that the use of meta-features, additional inputs describing each example in a dataset, can boost the performance of ensemble methods, but the greatest reported gains have come from nonlinear procedures requiring significant tuning and training time. Here, we present a linear technique, Feature-Weighted Linear Stacking (FWLS), that incorporates meta-features for improved accuracy while retaining the well-known virtues of linear regression regarding speed, stability, and interpretability. FWLS combines model predictions linearly using coefficients that are themselves linear functions of meta-features. This technique was a key facet of the solution of the second place team in the recently concluded Netflix Prize competition. Significant increases in accuracy over standard linear stacking are demonstrated on the Netflix Prize collaborative filtering dataset.},
+annote = {In this article authors describe the Feature-Weighted Linear Stacking. This algorithm is the ensembling class ML algorithm. Besides of the standard features generated in the ensembling process, so the ones based on other algorithms, it considers also the meta-features.
+However, the overall process is not very straightforward because is is not about combining the set of model predictions with model-features because models do not capture the relationship between the engineered variables and the typical ensmbled input itself. Additionally it parametrizes the coefficients associated with the models. Although high competency of the model it might be hard to incorporate this online learning method into the system due to its high computing complexity of generating quadratic functions.},
+archivePrefix = {arXiv},
+arxivId = {0911.0460},
+author = {Sill, Joseph and Takacs, Gabor and Mackey, Lester and Lin, David},
+eprint = {0911.0460},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Sill et al. - 2009 - Feature-Weighted Linear Stacking.pdf:pdf},
+mendeley-groups = {ML2},
+pages = {1--17},
+title = {{Feature-Weighted Linear Stacking}},
+url = {http://arxiv.org/abs/0911.0460},
+year = {2009}
+}
+@article{Bertin-Mahieux2013,
+abstract = {This work focuses on extracting patterns in musical data from very large collections. The problem is split in two parts. First, we build such a large collection, the Million Song Dataset, to provide researchers access to commercial-size datasets. Second, we use this collection to study cover song recognition which involves finding harmonic patterns from audio features. Regarding the Million Song Dataset, we detail how we built the original collection from an online API, and how we encouraged other organizations to participate in the project. The$\sim${\ldots}},
+author = {Bertin-Mahieux, T},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Bertin-Mahieux - 2013 - Large-Scale Pattern Discovery in Music Thierry Bertin-Mahieux.pdf:pdf},
+keywords = {mendeley},
+mendeley-groups = {ML2},
+title = {{Large-Scale Pattern Discovery in Music Thierry Bertin-Mahieux}},
+url = {https://academiccommons.columbia.edu/doi/10.7916/D8NC67CT},
+year = {2013}
+}
+@article{Bertin-Mahieux2011a,
+abstract = {We introduce the Million Song Dataset, a freely-available collection of audio features and metadata for a million contemporary popular music tracks. We describe its creation process, its content, and its possible uses. Attractive features of the Million Song Database include the range of existing resources to which it is linked, and the fact that it is the largest current research dataset in our field. As an illustration, we present year prediction as an example application, a task that has, until now, been difficult to study owing to the absence of a large set of suitable data. We show positive results on year prediction, and discuss more generally the future development of the dataset. {\textcopyright} 2011 International Society for Music Information Retrieval.},
+author = {Bertin-Mahieux, Thierry and Ellis, Daniel P.W. and Whitman, Brian and Lamere, Paul},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Bertin-Mahieux et al. - 2011 - The million song dataset.pdf:pdf},
+isbn = {9780615548654},
+journal = {Proceedings of the 12th International Society for Music Information Retrieval Conference, ISMIR 2011},
+mendeley-groups = {ML2},
+number = {January 2011},
+pages = {591--596},
+title = {{The million song dataset}},
+year = {2011}
+}
+@article{Allen2018,
+abstract = {Timbre, or sound quality, is a crucial but poorly understood dimension of auditory perception that is important in describing speech, music, and environmental sounds. The present study investigates the cortical representation of different timbral dimensions. Encoding models have typically incorporated the physical characteristics of sounds as features when attempting to understand their neural representation with functional MRI. Here we test an encoding model that is based on five subjectively derived dimensions of timbre to predict cortical responses to natural orchestral sounds. Results show that this timbre model can outperform other models based on spectral characteristics, and can perform as well as a complex joint spectrotemporal modulation model. In cortical regions at the medial border of Heschl's gyrus, bilaterally, and regions at its posterior adjacency in the right hemisphere, the timbre model outperforms even the complex joint spectrotemporal modulation model. These findings suggest that the responses of cortical neuronal populations in auditory cortex may reflect the encoding of perceptual timbre dimensions.},
+author = {Allen, Emily J and Moerel, Michelle and Lage-Castellanos, Agust{\'{i}}n and {De Martino}, Federico and Formisano, Elia and Oxenham, Andrew J and Allen, Emily},
+doi = {10.1016/j.neuroimage.2017.10.050},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Allen et al. - 2018 - Encoding of Natural Timbre Dimensions in Human Auditory Cortex HHS Public Access.pdf:pdf},
+journal = {Neuroimage},
+keywords = {auditory cortex,encoding models,music,perception,timbre},
+mendeley-groups = {ML2},
+pages = {60--70},
+title = {{Encoding of Natural Timbre Dimensions in Human Auditory Cortex HHS Public Access}},
+volume = {166},
+year = {2018}
+}
+@article{Wolpert1992,
+abstract = {This paper introduces stacked generalization, a scheme for minimizing the generalization error rate of one or more generalizers. Stacked generalization works by deducing the biases of the generalizer(s) with respect to a provided learning set. This deduction proceeds by generalizing in a second space whose inputs are (for example) the guesses of the original generalizers when taught with part of the learning set and trying to guess the rest of it, and whose output is (for example) the correct guess. When used with multiple generalizers, stacked generalization can be seen as a more sophisticated version of cross-validation, exploiting a strategy more sophisticated than cross-validation's crude winner-takes-all for combining the individual generalizers. When used with a single generalizer, stacked generalization is a scheme for estimating (and then correcting for) the error of a generalizer which has been trained on a particular learning set and then asked a particular question. After introducing stacked generalization and justifying its use, this paper presents two numerical experiments. The first demonstrates how stacked generalization improves upon a set of separate generalizers for the NETtalk task of translating text to phonemes. The second demonstrates how stacked generalization improves the performance of a single surface-fitter. With the other experimental evidence in the literature, the usual arguments supporting cross-validation, and the abstract justifications presented in this paper, the conclusion is that for almost any real-world generalization problem one should use some version of stacked generalization to minimize the generalization error rate. This paper ends by discussing some of the variations of stacked generalization, and how it touches on other fields like chaos theory. {\textcopyright} 1992 Pergamon Press Ltd.},
+author = {Wolpert, David H.},
+doi = {10.1016/S0893-6080(05)80023-1},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Wolpert - 1992 - Stacked generalization.pdf:pdf},
+issn = {08936080},
+journal = {Neural Networks},
+keywords = {Combining generalizers,Error estimation and correction,Generalization and induction,Learning set preprocessing,cross-validation},
+mendeley-groups = {ML2},
+number = {2},
+pages = {241--259},
+title = {{Stacked generalization}},
+volume = {5},
+year = {1992}
+}
+@article{Hastie2009,
+abstract = {During the past decade there has been an explosion in computation and information technology. With it has come a vast amount of data in a variety of fields such as medicine, biology, finance, and marketing. The challenge of understanding these data has led to the development of new tools in the field of statistics, and spawned new areas such as data mining, machine learning, and bioinformatics. Many of these tools have common underpinnings but are often expressed with different terminology. This book describes the important ideas in these areas in a common conceptual framework. While the approach is statistical, the emphasis is on concepts rather than mathematics.},
+author = {et. all. Hastie, Trevor},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Hastie - 2009 - Springer Series in Statistics The Elements of Statistical Learning.pdf:pdf},
+isbn = {9780387848570},
+issn = {03436993},
+journal = {The Mathematical Intelligencer},
+mendeley-groups = {ML2},
+number = {2},
+pages = {83--85},
+pmid = {15512507},
+title = {{Springer Series in Statistics The Elements of Statistical Learning}},
+url = {http://www.springerlink.com/index/D7X7KX6772HQ2135.pdf},
+volume = {27},
+year = {2009}
+}
+@book{Kuhn2013,
+abstract = {Applied Predictive Modeling covers the overall predictive modeling process, beginning with the crucial steps of data preprocessing, data splitting and foundations of model tuning. The text then provides intuitive explanations of numerous common and modern regression and classification techniques, always with an emphasis on illustrating and solving real data problems. The text illustrates all parts of the modeling process through many hands-on, real-life examples, and every chapter contains extensive R code for each step of the process. This multi-purpose text can be used as an introduction to predictive models and the overall modeling process, a practitioner's reference handbook, or as a text for advanced undergraduate or graduate level predictive modeling courses. To that end, each chapter contains problem sets to help solidify the covered concepts and uses data available in the book's R package. This text is intended for a broad audience as both an introduction to predictive models as well as a guide to applying them. Non-mathematical readers will appreciate the intuitive explanations of the techniques while an emphasis on problem-solving with real data across a wide variety of applications will aid practitioners who wish to extend their expertise. Readers should have knowledge of basic statistical ideas, such as correlation and linear regression analysis. While the text is biased against complex equations, a mathematical background is needed for advanced topics.},
+author = {Kuhn, Max and Johnson, Kjell},
+booktitle = {Applied Predictive Modeling},
+doi = {10.1007/978-1-4614-6849-3},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Kuhn, Johnson - 2013 - Applied predictive modeling.pdf:pdf},
+isbn = {9781461468493},
+mendeley-groups = {ML2},
+pages = {1--600},
+title = {{Applied predictive modeling}},
+year = {2013}
+}
+@article{Hastie2021,
+abstract = {Review From the reviews: .,."There are interesting and non-standard topics that are not usually included in a first course in measture-theoretic probability including Markov Chains and MCMC, the bootstrap, limit theorems for martingales and mixing sequences, Brownian motion and Markov processes. The material is well-suported with many end-of-chapter problems." D.L. McLeish for Short Book Reviews of the ISI, December 2006 "The reader sees not only how measure theory is used to develop probability theory, but also how probability theory is used in applications. a The discourse is delivered in a theorem proof format and thus is better suited for classroom a . The authors prose is generally well thought out a . will make an attractive choice for a two-semester course on measure and probability, or as a second course for students with a semester of measure or probability theory under their belt." (Peter C. Kiessler, Journal of the American Statistical Association, Vol. 102 (479), 2007) "The book is a well written self-contained textbook on measure and probability theory. It consists of 18 chapters. Every chapter contains many well chosen examples and ends with several problems related to the earlier developed theory (some with hints). a At the very end of the book there is an appendix collecting necessary facts from set theory, calculus and metric spaces. The authors suggest a few possibilities on how to use their book." (Kazimierz Musial, Zentralblatt MATH, Vol. 1125 (2), 2008) "The title of the book consists of the names of its two basic parts. The booka (TM)s third part is comprised of some special topics from probability theory. a The authors suggest using the book intwo-semester graduate programs in statistics or a one-semester seminar on special topics. The material of the book is standard a is clear, comprehensive and a $\sim$without being intimidatinga (TM)." (Rimas NorvaiAa, Mathematical Reviews, Issue 2007 f) Product Description This is a graduate level textbook on measure theory and probability theory. The book can be used as a text for a two semester sequence of courses in measure theory and probability theory, with an option to include supplemental material on stochastic processes and special topics. It is intended primarily for first year Ph.D. students in mathematics and statistics although mathematically advanced students from engineering and economics would also find the book useful. Prerequisites are kept to the minimal level of an understanding of basic real analysis concepts such as limits, continuity, differentiability, Riemann integration, and convergence of sequences and series. A review of this material is included in the appendix. The book starts with an informal introduction that provides some heuristics into the abstract concepts of measure and integration theory, which are then rigorously developed. The first part of the book can be used for a standard real analysis course for both mathematics and statistics Ph.D. students as it provides full coverage of topics such as the construction of Lebesgue-Stieltjes measures on real line and Euclidean spaces, the basic convergence theorems, L p spaces, signed measures, Radon-Nikodym theorem, Lebesgue's decomposition theorem and the fundamental theorem of Lebesgue integration on R, product spaces and product measures, and Fubini-Tonelli theorems. It also provides an elementary introduction to Banach and Hilbert spaces, convolutions, Fourier series and Fourier and Plancherel transforms. Thus part I would be particularly useful for students in a typical Statistics Ph.D. program if a separate course on real analysis is not a standard requirement. Part II (chapters 6-13) provides full coverage of standard graduate level probability theory. It starts with Kolmogorov's probability model and Kolmogorov's existence theorem. It then treats thoroughly the laws of large numbers including renewal theory and ergodic theorems with applications and then weak convergence of probability distributions, characteristic functions, the Levy-Cramer continuity theorem and the central limit theorem as well as stable laws. It ends with conditional expectations and conditional probability, and an introduction to the theory of discrete time martingales. Part III (chapters 14-18) provides a modest coverage of discrete time Markov chains with countable and general state spaces, MCMC, continuous time discrete space jump Markov processes, Brownian motion, mixing sequences, bootstrap methods, and branching processes. It could be used for a topics/seminar course or as an introduction to stochastic processes. From the reviews: "...There are interesting and non-standard topics that are not usually included in a first course in measture-theoretic probability including Markov Chains and MCMC, the bootstrap, limit theorems for martingales and mixing sequences, Brownian motion and Markov processes. The material is well-suported with many end-of-chapter problems." D.L. McLeish for Short Book Reviews of the ISI, December 2006},
+archivePrefix = {arXiv},
+arxivId = {arXiv:1011.1669v3},
+author = {Hastie, Trevor and Tibshirani, Robert and James, Gareth and Witten, Daniela},
+eprint = {arXiv:1011.1669v3},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Hastie et al. - 2021 - An Introduction to Statistical Learning (2nd Edition).pdf:pdf},
+isbn = {9780387781884},
+issn = {01621459},
+journal = {Springer Texts},
+mendeley-groups = {ML2},
+pages = {618},
+pmid = {10911016},
+title = {{An Introduction to Statistical Learning (2nd Edition)}},
+volume = {102},
+year = {2021}
+}
+@article{Jahrer2010,
+abstract = {We analyze the application of ensemble learning to recom-mender systems on the Netflix Prize dataset. For our analysis we use a set of diverse state-of-the-art collaborative filtering (CF) algorithms, which include: SVD, Neighborhood Based Approaches, Restricted Boltzmann Machine, Asymmetric Factor Model and Global Effects. We show that linearly combining (blending) a set of CF algorithms increases the accuracy and outperforms any single CF algorithm. Furthermore, we show how to use ensemble methods for blending predictors in order to outperform a single blending algorithm. The dataset and the source code for the ensemble blending are available online [9]. {\textcopyright} 2010 ACM.},
+author = {Jahrer, Michael and T{\"{o}}scher, Andreas and Legenstein, Robert},
+doi = {10.1145/1835804.1835893},
+file = {:C\:/Users/Mateusz/AppData/Local/Mendeley Ltd./Mendeley Desktop/Downloaded/Jahrer, T{\"{o}}scher, Legenstein - 2010 - Combining predictions for accurate recommender systems.pdf:pdf},
+isbn = {9781450300551},
+journal = {Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+keywords = {Ensemble learning,Netflix,Recommender systems,Supervised learning},
+mendeley-groups = {ML2},
+pages = {693--701},
+title = {{Combining predictions for accurate recommender systems}},
+year = {2010}
+}
+@misc{Dua:2019,
+  author = {Dua, Dheeru and Graff, Casey},
+  year = {2017},
+  title = {UCI Machine Learning Repository},
+  url = {http://archive.ics.uci.edu/ml},
+  institution = {University of California, Irvine, School of Information and Computer Sciences}
+}

@@ -2,43 +2,40 @@
 title: Regression problem
 subtitle: The release year prediction of the songs from the timbre features.
 author: "Mateusz Baryła & Agata Wytrykowska"
+bibliography: bibliography.bib
 link-citations: yes
+nocite: '@*'
 output:
   html_document:
-    toc: yes
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: united
     df_print: paged
-  pdf_document:
-    toc: yes
-    df_print: kable
-    fig_width: 7
-    fig_caption: yes
-    html_document:
-      number_sections: no
-      theme: cerulean
-      highligt: pygments
 ---
 
 # Introduction
 
-Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011. Most of the observations relate to the  2000s \cite{Bertin-Mahieux2011}. We downloaded it from the Machine Learning Repository \cite{Dua:2019}.
+Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011. Most of the observations relate to the  2000s [@Bertin-Mahieux2011]. We downloaded it from the Machine Learning Repository [@Dua:2019].
 
-```{r}
+```{r, echo = FALSE}
 pacman::p_load(data.table, tidyverse, knitr,
                GGally, ggcorrplot, tidymodels,
-               Rcpp, ranger, kableExtra, tree)
+               Rcpp, ranger, kableExtra, tree, rpart, caret)
+experiment <- TRUE
 ```
 
 # Data Inspection
-There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall,timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack \cite{Bertin-Mahieux2013}.
+There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall, timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack [@Bertin-Mahieux2013].
 
 # Data Preprocessing
 
 ## Reading data
-```{r}
-raw_data <- read.csv2('..\\data\\raw\\YearPredictionMSD_sample.txt')
+```{r, echo = FALSE}
+source('..\\src\\utils\\fit_table.r')
 ```
 ```{r}
-source('..\\src\\utils\\fit_table.r')
+raw_data <- read.csv2('..\\data\\raw\\YearPredictionMSD_sample.txt')
 raw_data %>% fit_table()
 ```
 The first column in the dataset correspond to the year that will be predicted from the features. We rename it for the sake of the modelling purposes. With the MSD many tasks can be addressed, however the song release year brings many practical applications and there are not a lot of research papers that relate to this prediction problem. Only audio features are used in this problem which is justified with the fact that listeners are often fond of music from certain periods of their lives. Another reason might be the evolution of timbre across years.
@@ -54,11 +51,10 @@ raw_data %>% fit_table()
 In the next step we split the dataset into the attributes and the target variable. Thanks to that we will not mix the attributes in the feature engineering process.
 ```{r}
 target_data <- raw_data %>% select(year)
-target_data %>% fit_table()
 ```
 ## Scaling
 
-The authors in the main article mapped the year values using linear mapping to [0,1] range \cite{main_article}. We follow the convention in the analysis below.
+The authors in the main article mapped the year values using linear mapping to [0,1] range [@Bertin-Mahieux2011]. We follow the convention in the analysis below.
 
 ```{r}
 # mapping target to [0,1] range
@@ -66,7 +62,8 @@ range_to_0_1 <- function(vec) {
   (vec - min(vec)) / (max(vec) - min(vec))
 }
 
-target_data$year_scaled <- range_to_0_1(target_data$year)
+raw_data$year_scaled <- range_to_0_1(raw_data$year)
+raw_data$year_scaled <- range_to_0_1(raw_data$year)
 ```
 
 ## Splitting dataset
@@ -74,40 +71,28 @@ target_data$year_scaled <- range_to_0_1(target_data$year)
 The result might suggest that the dataset is somehow not completely random. It is confirmed with the fact that the following train / test split should be respected. First 463 715 examples should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
 
 ```{r}
-train_data <- raw_data %>% slice_head(n = 463715)
-test_data <- raw_data %>% slice_tail(n = 51630)
+if (experiment){
+  train_data <- raw_data %>% slice_head(n = 890)
+  test_data <- raw_data %>% slice_tail(n = 110)
+} else{
+  train_data <- raw_data %>% slice_head(n = 463715)
+  test_data <- raw_data %>% slice_tail(n = 51630)
+}
 ```
-The dataset authors add that thanks to that split 'producer effect' will be avoided. The justification for that is t
-
-```{r}
-covariates_data <- raw_data %>% select(-year)
-covariates_data %>% fit_table()
-```
+The dataset authors add that thanks to that split 'producer effect' will be avoided.
 Next, we confirm that the remaining attributes correspond to the timbre covariates.
 ```{r}
-timbre_average_data <- covariates_data %>%
+timbre_average_data <- raw_data %>%
         select(V2:V13)
 timbre_average_data %>% fit_table()
 ```
 
-We needed to investigate what the timbre in the sound analysis actually means. It is described as everything that can be differentiated between two different tracks by the listener having kept the same pitch, spatial location and loudness and refers to the perceptual quality of a sound and color. "Brightness", "clarity", "harshness", "fullness" and "noisiness" are frequently used adjectives that are associated with the timbre word \cite{Allen2018}.
+We needed to investigate what the timbre in the sound analysis actually means. It is described as everything that can be differentiated between two different tracks by the listener having kept the same pitch, spatial location and loudness and refers to the perceptual quality of a sound and color. "Brightness", "clarity", "harshness", "fullness" and "noisiness" are frequently used adjectives that are associated with the timbre word [@Allen2018].
 
 ```{r}
-timbre_covariance_data <- covariates_data %>%
+timbre_covariance_data <- raw_data %>%
         select(V14:V91)
 timbre_covariance_data %>% fit_table()
-```
-
-Two separate summaries are done for timbre average and covariance data. For later modelling purposes two separate DataFrames with target data are specified as well.
-
-```{r}
-timbre_average_with_target_data <- timbre_average_data %>%
-        add_column(year = target_data %>% pull(year),
-                   year_scaled = target_data %>% pull(year_scaled))
-
-timbre_covariance_with_target_data <- timbre_covariance_data %>%
-        add_column(year = target_data %>% pull(year),
-                   year_scaled = target_data %>% pull(year_scaled))
 ```
 
 ## Handling missing values
@@ -157,7 +142,7 @@ timbre_average_data %>%
         geom_boxplot()
 ```
 
-Increase in loudness is spotted across decades. Nowadyas people listen more to louder music.
+Increase in loudness is spotted across decades. Nowadays people listen to louder music more.
 
 ### Correlation matrix
 An important area that should not be neglected in the process of building machine learning model is creating the correlation matrix based on which we will continue investigation regarding the two-dimensional plots. We have decided to learn more about the timbre split suggested by the authors. Based on that we can check whether average timbre or timbre covariance have stronger influence on the outcome variable.
@@ -192,7 +177,8 @@ high_corr_columns <- corr_covariance %>%
 Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater than chosen level of correlation. Interestingly it is set very low to 0.05 since the association is extremely low.
 
 ```{r}
-corr_covariance <-  timbre_covariance_with_target_data %>%
+corr_covariance <-  timbre_covariance_data %>%
+        mutate(year = target_data$year) %>%
         select(all_of(high_corr_columns)) %>%
         cor()
 ```
@@ -211,13 +197,17 @@ The highest correlation with the target variable is spotted between variable V21
 ## Statistical analysis
 ```{r}
 source("..\\src\\utils\\t_test_across_centuries.R")
-t_test_test_across_centuries(timbre_average_with_target_data,
+t_test_test_across_centuries(timbre_average_data %>%
+                                     mutate(year = target_data$year),
                              'V2')
-t_test_test_across_centuries(timbre_average_with_target_data,
+t_test_test_across_centuries(timbre_average_data %>%
+                                     mutate(year = target_data$year),
                              'V7')
-t_test_test_across_centuries(timbre_covariance_with_target_data,
+t_test_test_across_centuries(timbre_covariance_data %>%
+                                     mutate(year = target_data$year),
                              'V21')
-t_test_test_across_centuries(timbre_covariance_with_target_data,
+t_test_test_across_centuries(timbre_covariance_data %>%
+                                     mutate(year = target_data$year),
                              'V15')
 ```
 We have show that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
@@ -227,23 +217,10 @@ We have show that across the centuries averages differ for the variables that ar
 ## Logarithmic transformation
 
 ```{r}
-timbre_covariance_with_target_for_modelling_data <-
-  timbre_covariance_with_target_data %>%
-          select(-year) %>%
-          slice_head(n = 463715)
-```
-```{r}
-timbre_average_with_target_for_modelling_data <-
-    timbre_average_with_target_data %>%
-            select(-year) %>%
-            slice_tail(n = 51630)
-```
-
-```{r}
 source('..\\src\\utils\\fit_rf_model_with_recipe.R')
 simple_recipe_with_log <-
         recipe(year_scaled ~ .,
-               data = timbre_covariance_with_target_for_modelling_data) %>%
+               data = train_data %>% mutate(year = target_data$year_scaled)) %>%
                 step_log(V15, base = 10)
 ```
 ## Interactions
@@ -251,7 +228,7 @@ simple_recipe_with_log <-
 ```{r}
 simple_recipe_with_interact <-
         recipe(year_scaled ~ .,
-               data = timbre_covariance_with_target_for_modelling_data) %>%
+               data = train_data) %>%
                 step_interact(terms = ~V14:V91)
 ```
 
@@ -266,8 +243,8 @@ Firstly, all the covariance and average predictors are considered separately. We
 
 ```{r}
 first_model_formula <- year_scaled ~ .
-cov_tree <- tree(first_model_formula, timbre_covariance_with_target_for_modelling_data)
-avg_tree <- tree(first_model_formula, timbre_average_with_target_for_modelling_data)
+cov_tree <- tree(first_model_formula, train_data)
+avg_tree <- tree(first_model_formula, train_data)
 ```
 ```{r}
 summary(cov_tree)
@@ -287,14 +264,104 @@ plot(avg_tree)
 text(avg_tree, pretty = 0)
 ```
 Controlling for size of trees
-```{r}
 
+## rpart package
+
+```{r}
+rpart_tree <- rpart(first_model_formula,
+                     data = train_data,
+                     method = "anova")
+plotcp(rpart_tree)
 ```
+
+Following **the rule of 1-SE** we choose trees with 14 terminal nodes. Thanks to that overfitting can be omitted.
+
+Other values can be optimized in the process as well `minsplit` and `maxdepth`. The first one relates to the number of observations that need to belong to the node before the split is considered. The latter one describe the height of the tree. It is the number of nodes between the root and the deepest terminal node.
+
+```{r}
+hyper_grid <- expand.grid(
+        minsplit = seq(5, 20, 1),
+        maxdepth = seq(8, 15, 1)
+)
+```
+```{r, echo = FALSE}
+models <- list()
+for (i in 1:nrow(hyper_grid)) {
+
+  cat(i, "/", nrow(hyper_grid), "\n", sep = "")
+
+  # setting the values
+  minsplit <- hyper_grid$minsplit[i]
+  maxdepth <- hyper_grid$maxdepth[i]
+
+  # settin the seed
+  set.seed(123123 + i)
+
+  # training of the model and saving results to the list
+  models[[i]] <- rpart(
+          formula = first_model_formula,
+          data    = train_data,
+          method  = "anova",
+          control = list(minsplit = minsplit, maxdepth = maxdepth)
+  )
+}
+```
+
+```{r }
+get_cp <- function(x) {
+  min <- which.min(x$cptable[, "xerror"])
+  cp  <- x$cptable[min, "CP"]
+  return(cp)
+}
+
+get_min_error <- function(x) {
+  min    <- which.min(x$cptable[, "xerror"])
+  xerror <- x$cptable[min, "xerror"]
+  return(xerror)
+}
+```
+```{r }
+hyper_grid %>%
+        mutate(
+                cp    = purrr::map_dbl(models, get_cp),
+                error = purrr::map_dbl(models, get_min_error)
+        ) %>%
+        arrange(error) %>%
+        top_n(-5, wt = error)
+```
+
+Let's examine performance of the model with the lowest prediction error
+on the testing set.
+
+```{r }
+houses.tree.optimal <- rpart(
+        formula = first_model_formula,
+        data    = train_data,
+        method  = "anova",
+        control = list(minsplit = 17, maxdepth = 12, cp = 0.01)
+)
+
+pred <- predict(houses.tree.optimal, newdata = test_data)
+```
+
+```{r }
+tc      <- trainControl(method = "cv", number = 10)
+cp.grid <- expand.grid(cp = seq(0, 0.03, 0.001))
+```
+
+```{r}
+houses.tree3 <- train(first_model_formula,
+                      data = train_data,
+                      method = "rpart",
+                      trControl = tc,
+                      tuneGrid = cp.grid)
+```
+
 ## Model with transformed variables
 ```{r}
-fit_rf_model_with_recipe(simple_recipe_with_log, timbre_covariance_with_target_for_modelling_data)
+fit_rf_model_with_recipe(simple_recipe_with_log, train_data)
 
-fit_rf_model_with_recipe(simple_recipe_with_interact, timbre_covariance_with_target_for_modelling_data)
+fit_rf_model_with_recipe(simple_recipe_with_interact, train_data)
 ```
 
 # Diagnostics
