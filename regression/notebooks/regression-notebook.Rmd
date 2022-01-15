@@ -14,21 +14,20 @@ output:
     df_print: paged
 ---
 
-# Introduction
+# Description of data and problem analyzed
 
 Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011. Most of the observations relate to the  2000s [@Bertin-Mahieux2011]. We downloaded it from the Machine Learning Repository [@Dua:2019].
 
 ```{r, echo = FALSE}
 pacman::p_load(data.table, tidyverse, knitr,
                GGally, ggcorrplot, tidymodels,
-               Rcpp, ranger, kableExtra, tree, rpart, caret)
+               randomForest, Rcpp, ranger,
+               kableExtra, tree, rpart, caret)
 experiment <- TRUE
 ```
 
 # Data Inspection
 There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall, timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack [@Bertin-Mahieux2013].
-
-# Data Preprocessing
 
 ## Reading data
 ```{r, echo = FALSE}
@@ -72,11 +71,11 @@ The result might suggest that the dataset is somehow not completely random. It i
 
 ```{r}
 if (experiment){
-  train_data <- raw_data %>% slice_head(n = 890)
-  test_data <- raw_data %>% slice_tail(n = 110)
+  train_data <- raw_data %>% slice_head(n = 890) %>% select(-year)
+  test_data <- raw_data %>% slice_tail(n = 110)  %>% select(-year)
 } else{
-  train_data <- raw_data %>% slice_head(n = 463715)
-  test_data <- raw_data %>% slice_tail(n = 51630)
+  train_data <- raw_data %>% slice_head(n = 463715)  %>% select(-year)
+  test_data <- raw_data %>% slice_tail(n = 51630) %>% select(-year)
 }
 ```
 The dataset authors add that thanks to that split 'producer effect' will be avoided.
@@ -103,9 +102,21 @@ raw_data %>%
 ```
 There are no missing values across columns and in the whole dataset. This is an important insight that will allow for an easier later phases of the project e.g exploratory data analysis and modelling.
 
-# Exploratory Data Analysis
+# Descriptive analyses of the data
 
 Having described the dataset we can follow the analysis and in the next points visualized dataset including both target and features on which the model will be trained.
+
+## One-dimensional plots
+
+The target variable in the problem analyzed is year. We easily spot the distribution of it being heavily skewed.
+
+```{r}
+raw_data %>%
+        ggplot(aes(x = year)) +
+        geom_histogram(aes(y = ..density..),
+                       bins = 50, alpha = 0.4, fill = "pink", col = "gray30") +
+        geom_density(alpha = .2, fill = "blueviolet")
+```
 
 ## Two-dimensional plots
 
@@ -216,25 +227,11 @@ We have show that across the centuries averages differ for the variables that ar
 
 ## Logarithmic transformation
 
-```{r}
-source('..\\src\\utils\\fit_rf_model_with_recipe.R')
-simple_recipe_with_log <-
-        recipe(year_scaled ~ .,
-               data = train_data %>% mutate(year = target_data$year_scaled)) %>%
-                step_log(V15, base = 10)
-```
 ## Interactions
-
-```{r}
-simple_recipe_with_interact <-
-        recipe(year_scaled ~ .,
-               data = train_data) %>%
-                step_interact(terms = ~V14:V91)
-```
 
 # Variable selection
 
-# Model
+# Training/test data division and resampling
 
 ## tree model
 
@@ -263,9 +260,8 @@ summary(avg_tree)
 plot(avg_tree)
 text(avg_tree, pretty = 0)
 ```
-Controlling for size of trees
 
-## rpart package
+Controlling for size of trees.
 
 ```{r}
 rpart_tree <- rpart(first_model_formula,
@@ -278,13 +274,13 @@ Following **the rule of 1-SE** we choose trees with 14 terminal nodes. Thanks to
 
 Other values can be optimized in the process as well `minsplit` and `maxdepth`. The first one relates to the number of observations that need to belong to the node before the split is considered. The latter one describe the height of the tree. It is the number of nodes between the root and the deepest terminal node.
 
-```{r}
+```{r, results='hide'}
 hyper_grid <- expand.grid(
         minsplit = seq(5, 20, 1),
         maxdepth = seq(8, 15, 1)
 )
 ```
-```{r, echo = FALSE}
+```{r, results='hide'}
 models <- list()
 for (i in 1:nrow(hyper_grid)) {
 
@@ -320,7 +316,7 @@ get_min_error <- function(x) {
   return(xerror)
 }
 ```
-```{r }
+```{r, echo = FALSE}
 hyper_grid %>%
         mutate(
                 cp    = purrr::map_dbl(models, get_cp),
@@ -334,14 +330,15 @@ Let's examine performance of the model with the lowest prediction error
 on the testing set.
 
 ```{r }
-houses.tree.optimal <- rpart(
+optimal_tree <- rpart(
         formula = first_model_formula,
         data    = train_data,
         method  = "anova",
-        control = list(minsplit = 17, maxdepth = 12, cp = 0.01)
+        control = list(minsplit = 14, maxdepth = 12, cp = 0.01)
 )
 
-pred <- predict(houses.tree.optimal, newdata = test_data)
+pred <- predict(optimal_tree, newdata = test_data)
+optimal_RMSE <- RMSE(pred = pred, obs = test_data$year_scaled)
 ```
 
 ```{r }
@@ -350,11 +347,120 @@ cp.grid <- expand.grid(cp = seq(0, 0.03, 0.001))
 ```
 
 ```{r}
-houses.tree3 <- train(first_model_formula,
+tree3 <- train(first_model_formula,
                       data = train_data,
                       method = "rpart",
                       trControl = tc,
                       tuneGrid = cp.grid)
+pred <- predict(tree3, newdata = test_data)
+tree3_RMSE <- RMSE(pred = pred, obs = test_data$year_scaled)
+```
+
+## Bagging and random forest
+
+Firstly, we run `randomForest()` function. It does not allow for missing values in the dataset. However, as previously shown we do not deal with this problem in our dataset.
+
+```{r}
+rf <- randomForest(first_model_formula,
+                           data = train_data)
+```
+Interestingly, for random forest the prediction error can be computed without applying the model on the test dataset. The out-of-bag error is estimated then. Based on the stochastic experiment performed during the classes, the OOB is around 63 % of the size of the original data set.
+
+```{r}
+print(rf)
+```
+```{r}
+plot(rf)
+```
+Some of the advantages of randomForest package refer to its simplicity. Above we can see two efficient ways of accessing object metadata. Both ways are presented, the graphical and the tabular form. What is more the graphical representation of the most influencial variables can be achieved very easily.
+
+```{r}
+varImpPlot(rf,
+           sort = TRUE,
+           main = "Importance of predicors")
+```
+
+The `mtry` parameter can be optimized with the cross-validation process.
+```{r}
+parameters_rf <- expand.grid(mtry = 2:15)
+ctrl_oob <- trainControl(method = "oob")
+rf3 <- train(first_model_formula,
+              data = train_data,
+              method = "rf",
+              ntree = 100,
+              nodesize = 100,
+              tuneGrid = parameters_rf,
+              trControl = ctrl_oob,
+              importance = TRUE)
+```
+
+With that object the analysis can be performed efficiently.
+
+## XGBoost
+
+```{r}
+xgb_parameters <-
+        expand.grid(nrounds = 320,
+                    max_depth = 9,
+                    eta = 0.06,
+                    gamma = 1,
+                    colsample_bytree = 0.7,
+                    min_child_weight = 200,
+                    subsample = 0.9)
+xgb_model <-
+        train(first_model_formula,
+              data = train_data,
+              method = "xgbTree",
+              preProcess = c("center", "scale"),
+              tuneGrid  = xgb_parameters)
+```
+
+# Comparison
+```{r}
+source('..\\src\\models\\getRegressionMetrics.R')
+```
+```{r }
+
+
+
+
+
+
+
+
+
+
+
+bind_cols(tibble(tree         =  predict(tree3,  test_data),
+                 optimal_tree         =  predict(optimal_tree,  test_data),
+                 rf        =  predict(rf, test_data),
+                 rf3        =  predict(rf3, test_data),
+                 xgb_model  =predict(xgb_model, test_data))) %>%
+        map_dfr(getRegressionMetrics, real = test_data$year_scaled, .id = "model")
+```
+
+# Summary and conclusions
+
+
+# References
+
+
+# Appendix
+
+```{r}
+source('..\\src\\utils\\fit_rf_model_with_recipe.R')
+simple_recipe_with_log <-
+        recipe(year_scaled ~ .,
+               data = train_data %>% mutate(year = target_data$year_scaled)) %>%
+                step_log(V15, base = 10)
+```
+
+
+```{r}
+simple_recipe_with_interact <-
+        recipe(year_scaled ~ .,
+               data = train_data) %>%
+                step_interact(terms = ~V14:V91)
 ```
 
 ## Model with transformed variables
@@ -363,16 +469,3 @@ fit_rf_model_with_recipe(simple_recipe_with_log, train_data)
 
 fit_rf_model_with_recipe(simple_recipe_with_interact, train_data)
 ```
-
-# Diagnostics
-<!-- Residuals Error Checking -->
-
-# Forecast
-
-# Analysis
-
-# Conclusion
-
-# References
-
-<!-- This is required to attach the bibliography -->
