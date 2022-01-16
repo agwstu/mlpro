@@ -6,7 +6,7 @@ bibliography: bibliography.bib
 link-citations: yes
 nocite: '@*'
 output:
-  html_document:
+html_document:
     toc: true
     toc_float: true
     number_sections: true
@@ -22,7 +22,8 @@ Audio features play a significant role in the prediction of the song release yea
 pacman::p_load(data.table, tidyverse, knitr,
                GGally, ggcorrplot, tidymodels,
                randomForest, Rcpp, ranger,
-               kableExtra, tree, rpart, caret)
+               kableExtra, tree, rpart, caret,
+               VSURF)
 experiment <- TRUE
 ```
 
@@ -228,8 +229,32 @@ We have show that across the centuries averages differ for the variables that ar
 ## Logarithmic transformation
 
 ## Interactions
+```{r}
+rec <- recipe(first_model_formula, data = train_data )
 
+int_mod_1 <- rec %>%
+  step_interact(terms = ~ starts_with("V"):starts_with("V"))
+
+int_mod_1 <- prep(int_mod_1, training = train_data)
+
+dat_1 <- bake(int_mod_1, train_data)
+```
 # Variable selection
+
+We investigated two packages varSelRF [@varselrf] and VSURF [@genuer:hal-01251924] for variable selection step. We have chosen
+them mainly because of their dependency on the randomForest package that was used during the classes. The latter one
+is not implemented for regression problem. Hence, varSelfRF will be used which is more complicated procedure. It
+consists of three steps: thresholding, interpretation and prediction step. Thresholding is based on variable importance.
+The interpretation embeds random forest models starting with the one built only on the variables chosen in the previous step.
+Next, the stepwise selection procedure is applied in the final, prediction procedure.
+
+```{r}
+vsurf <- VSURF(x = train_data %>% select(-year_scaled), y = train_data$year_scaled,
+               ntree = 100, nfor.thres = 20,
+               nfor.interp = 10, nfor.pred = 10)
+```
+The method already trains the first model. We will evaluate its performance during the comparison of the
+trained machine learning models.
 
 # Training/test data division and resampling
 
@@ -435,12 +460,33 @@ bind_cols(tibble(tree         =  predict(tree3,  test_data),
                  optimal_tree         =  predict(optimal_tree,  test_data),
                  rf        =  predict(rf, test_data),
                  rf3        =  predict(rf3, test_data),
+                 vs_rf = predict(vsurf, test_data),
                  xgb_model  =predict(xgb_model, test_data))) %>%
         map_dfr(getRegressionMetrics, real = test_data$year_scaled, .id = "model")
 ```
 
 # Summary and conclusions
 
+First of all, for the first time we have been modelling on dataset of this size.
+We needed to take appropriate measures in order to experiment faster for instance
+sampling 1000 observations and working only on them.
+
+Secondly, the variables' names were not provided and we managed to find the naming for
+only few of them. We were not aware how the timbre might influence the outcome variable
+and haven't any intuition towards the variables that might be important. Hence,
+we focused on quantitative measures such as correlations or statistical tests.
+Nevertheless, the visualizations also occurred to be informative.
+
+What is more, the variable selection process was an opportunity to learn more about
+how to choose packages. During the notebook production we have already known
+what libraries were introduced during the classes (randomForest), what machine learning
+problem we analyze (regression) and what are the methods that it needs to implement
+(predict). Considering these three constraints we have chosen one that suits
+all of the aforementioned needs.
+
+Last but not least, it has been a fruitful experience to have all the results
+stored in a single table and compare them easily. Based on them we see that how
+the performance measures are distributed across models.
 
 # References
 
