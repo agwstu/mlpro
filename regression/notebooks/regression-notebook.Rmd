@@ -27,7 +27,6 @@ pacman::p_load(data.table, tidyverse, knitr,
 experiment <- TRUE
 ```
 
-# Data Inspection
 There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall, timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack [@Bertin-Mahieux2013].
 
 ## Reading data
@@ -226,10 +225,10 @@ We have show that across the centuries averages differ for the variables that ar
 
 # Variable transformation
 
-## Logarithmic transformation
-
 ## Interactions
 ```{r}
+first_model_formula <- year_scaled ~ .
+
 rec <- recipe(first_model_formula, data = train_data )
 
 int_mod_1 <- rec %>%
@@ -260,11 +259,10 @@ trained machine learning models.
 
 ## tree model
 
-Firstly, all the covariance and average predictors are considered separately. We would like to understand at this level of aggregation their level of contribution to the overall score.
-
+Firstly, all the covariance and average predictors are considered separately.
+We would like to understand at this level of aggregation their level of contribution to the overall score.
 
 ```{r}
-first_model_formula <- year_scaled ~ .
 cov_tree <- tree(first_model_formula, train_data)
 avg_tree <- tree(first_model_formula, train_data)
 ```
@@ -377,7 +375,9 @@ tree3 <- train(first_model_formula,
                       method = "rpart",
                       trControl = tc,
                       tuneGrid = cp.grid)
+
 pred <- predict(tree3, newdata = test_data)
+
 tree3_RMSE <- RMSE(pred = pred, obs = test_data$year_scaled)
 ```
 
@@ -445,17 +445,6 @@ xgb_model <-
 source('..\\src\\models\\getRegressionMetrics.R')
 ```
 ```{r }
-
-
-
-
-
-
-
-
-
-
-
 bind_cols(tibble(tree         =  predict(tree3,  test_data),
                  optimal_tree         =  predict(optimal_tree,  test_data),
                  rf        =  predict(rf, test_data),
