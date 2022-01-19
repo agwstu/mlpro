@@ -19,50 +19,128 @@ output:
       highligt: pygments
 ---
 
-# classification
+# Description of data and problem analyzed
+The dataset was donated in 1994. It consists of 20 attributes and 1000 instances. We downloaded it from Machine Learning repository [@Dua:2019].Two classes: "good" and "bad" credits are associated with the dataset. Within 20 variables there are hidden 13 categorical ones and 7 numerical. The dataset is unbalanced with 700 observations that belong to the "good" class and 300 belonging to the "bad" one [@Wang2003]. As stated in the literature it is a result of experiment. Each applicant was described by a set of attributes [@ODea2001].
 
+## Initial descriptive analyses of the data
 
-
-## Introduction*
-
-
-
-## Data Inspection
-
-
-## Data Preprocessing
-###Loading data
-
-### Reading data 
+## Reading data
+```{r, echo = FALSE}
+source('..\\src\\utils\\fit_table.r')
+```
 
 ```{r}
 ####Agata - Loading Data
 df <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.csv")
-
 ####Mateusz - Loading Data
 pacman::p_load(tidyverse)
-df <- read.csv("classification\\data\\raw\\dataset_31_credit-g.csv")
+df <- read.csv("..\\data\\raw\\dataset_31_credit-g.csv")
+df %>% fit_table()
+```
+## Renaming columns
+
+We prepared the mapping table that will serve in the next phases of the project - for instance
+during the exploratory data analysis.
+```{r}
+#Types of variables
+features <- df %>% names()
+type <- c('qualitative', 'quantitative', 'qualitative', 'qualitative',
+          'quantitative', 'qualitative', 'qualitative', 'quantitative',
+          'qualitative', 'qualitative', 'quantitative', 'qualitative',
+          'quantitative', 'qualitative', 'qualitative', 'quantitative',
+          'qualitative', 'quantitative', 'qualitative', 'qualitative',
+          'qualitative')
+specific_type <- c('discrete', 'discrete', 'discrete', 'discrete',
+                   'continuous', 'discrete', 'discrete', 'continuous',
+                   'discrete', 'discrete', 'discrete', 'discrete',
+                   'discrete', 'discrete', 'discrete', 'discrete',
+                   'discrete', 'discrete', 'discrete', 'discrete',
+                   'discrete')
+scales <- c('ordinal', 'ordinal', 'nominal', 'nominal',
+            'ratio', 'ordinal', 'ordinal', 'ratio',
+            'nominal', 'nominal', 'ratio', 'nominal',
+            'ratio', 'nominal', 'nominal', 'ordinal',
+            'ordinal', 'discrete', 'nominal', 'nominal',
+            'nominal')
+pretty_names <- c('Status of existing checking account', 'Duration in month',
+                  'Credit history', 'Purpose of taking a credit', 'Credit amount',
+                  'Savings account/bonds', 'Present employment since',
+                  'Installment rate in percentage of disposable income',
+                  'Personal status and sex', 'Other debtors / guarantors',
+                  'Present residence since', 'Property',
+                  'Age in years', 'Other installment plans',
+                  'Housing', 'Number of existing credits at this bank',
+                  'Job', 'Number of people being liable to provide maintenance for',
+                  'Telephone', 'Foreign worker', 'Class of a customer')
+dictionary <- tibble(features = features,
+                     general_type = type,
+                     specific_type = specific_type,
+                     scale = scales,
+                     pretty_name = pretty_names)
+dictionary
 ```
 
-### Hadnling missing data 
 
-``` {r, include = TRUE}
+With that dictionary we can much easier examine the overall nature of the dataset. Types of variables,
+their scales and names in a readable format will more likely allow for the more effective
+experimentation in the next phases of the project.
+
+## Splitting dataset
+```{r}
+train_data <- raw_data %>% slice_head(n = 666)
+test_data <- raw_data %>% slice_tail(n = 334)
+```
+
+We follow the split suggested to having 66 % observations in the train dataset
+and remaining 34 % in the test dataset [ODea2001].
+
+# Descriptive analyses of the data
+
+## Distributions
+
+Assessing the distribution of the credit amount across groups
+might be interesting. Hypothetically, good clients are these with larger
+credit amount. If they weren't classified to that group they would not
+be given a credit.
+
+```{r}
+df %>%
+  ggplot(aes(credit_amount, color = class)) +
+  geom_density() +
+  stat_density(geom = 'line', position = 'dodge', size = 1) +
+  labs(title = "Comparison of credit amount among group of respondents.") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Two-dimensional plots
+
+## Variable transformations
+
+## Variable selection methods
+
+## Training/test data division, resampling (e.g. cross-validation, down-sampling, up-sampling)
+
+## Comparison of prediction accuracy of at least 3 different machine learning methods on test data
+
+## Summary and conclusions
+
+### Hadlding missing data
+
+```{r, include = TRUE}
 table(is.na(df))
-
 ```
 
-There is no missing values in the dataset. 
+There are no missing values in the dataset.
 There is no need to verify a method of handling missing values. 
 
 ### Spotting variables' duplicates 
-``` {r, include = TRUE}
-
+```{r, include = TRUE}
 table(duplicated(df))
 ```
-There is no duplicates in data. 
+There are no duplicates in data.
 
 ### Transformation of variables 
-``` {r, include = TRUE}
+```{r, include = TRUE}
 ###transformation of variables changing characters into factors
 sapply(df, table)
 
@@ -72,9 +150,7 @@ sapply(df_f, class)
 df_f %>% as_tibble()
 ```
 
-
-
-### Types, scales features of data 
+### Types, scales features of data
 
 ```{r}
 #Types of variables
@@ -129,4 +205,3 @@ With that dictionary we can much easier examine the overall nature of the datase
 ## Conclusion
 
 ## References
-<!-- This is required to attach the bibliography -->
