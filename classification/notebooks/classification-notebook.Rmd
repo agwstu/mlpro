@@ -6,23 +6,15 @@ bibliography: bibliography.bib
 link-citations: yes
 output:
   html_document:
-    toc: yes
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: united
     df_print: paged
-  pdf_document:
-    toc: yes
-    df_print: kable
-    fig_width: 7
-    fig_caption: yes
-    html_document:
-      number_sections: no
-      theme: cerulean
-      highligt: pygments
 ---
 
 # Description of data and problem analyzed
 The dataset was donated in 1994. It consists of 20 attributes and 1000 instances. We downloaded it from Machine Learning repository [@Dua:2019].Two classes: "good" and "bad" credits are associated with the dataset. Within 20 variables there are hidden 13 categorical ones and 7 numerical. The dataset is unbalanced with 700 observations that belong to the "good" class and 300 belonging to the "bad" one [@Wang2003]. As stated in the literature it is a result of experiment. Each applicant was described by a set of attributes [@ODea2001].
-
-## Initial descriptive analyses of the data
 
 ## Reading data
 ```{r, echo = FALSE}
@@ -33,9 +25,10 @@ source('..\\src\\utils\\fit_table.r')
 ####Agata - Loading Data
 df <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.csv")
 ####Mateusz - Loading Data
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, kableExtra, treemapify)
+raw_data <- read.csv("..\\data\\raw\\dataset_31_credit-g.csv")
 df <- read.csv("..\\data\\raw\\dataset_31_credit-g.csv")
-df %>% fit_table()
+raw_data %>% fit_table()
 ```
 ## Renaming columns
 
@@ -104,25 +97,79 @@ credit amount. If they weren't classified to that group they would not
 be given a credit.
 
 ```{r}
-df %>%
+raw_data %>%
   ggplot(aes(credit_amount, color = class)) +
   geom_density() +
   stat_density(geom = 'line', position = 'dodge', size = 1) +
   labs(title = "Comparison of credit amount among group of respondents.") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
+```{r}
+raw_data %>%
+  ggplot(aes(x = class)) +
+  geom_bar() +
+  labs(title = "Distribution of the outcome variable.",
+       y = "Count of respondents belonging to the particular group") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+We would like to bridge the gap between the purpose of taking the credit, the mean credit amount its duration through advanced visualization technique - treemap.
 
-## Two-dimensional plots
+```{r}
+data_to_treemap <-
+  raw_data %>%
+    group_by(purpose) %>%
+    summarise(across(c(credit_amount, age, duration),
+                      list(mean = ~mean(.))),
+              .groups = "rowwise")
+```
 
-## Variable transformations
+```{r}
+ggplot(data_to_treemap,
+       aes(area = credit_amount_mean, fill = duration_mean, label = purpose)) +
+  geom_treemap() +
+  geom_treemap_text(size = 10, fontface = "italic", colour = "black", place = "centre", grow = F) +
+  labs(title = "Mean duration and amount of credit across purposes.") +
+  scale_fill_gradient(guide = guide_colorbar()) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(fill = guide_legend(title = "Mean duration"))
+```
+Retraining is the purpose with the smallest credit duration. Used car, business and other purposes are the ones with the longest duration. What is more, we are interested in
 
-## Variable selection methods
+```{r}
+raw_data %>%
+    ggplot(aes(x = class, y = age, fill = factor(credit_history),
+               colour = factor(credit_history))) +
+    geom_boxplot(alpha = 0.4) +
+    geom_point(position = position_jitterdodge()) +
+    ggtitle("What is the distribution of respondents' age
+    considering their credit history and outcome variable?") +
+    labs(x = "class", y = "Age of respondents", colour = "Credit history") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    guides(fill="none")
+```
+Surprisingly even though people delayed paying their credit previously, at young age, they are still assigned to the group of a good credit risk. On the other hand, in accordance with our intuition existing credit was paid mostly for mature people that are wealthier.
 
-## Training/test data division, resampling (e.g. cross-validation, down-sampling, up-sampling)
+# Variable transformations
 
-## Comparison of prediction accuracy of at least 3 different machine learning methods on test data
+We start with assigning the credit duration and age to 2 bins. Out assumption is that there might be some dependency between two groups and two artificially created variables.
 
-## Summary and conclusions
+```{r}
+interim_data <- raw_data %>%
+        mutate(duration_in_years = duration/12,
+               credit_amount_bin = cut(credit_amount, breaks=2),
+               age_bin = ntile(age, n=2)) %>%
+        select(duration_in_years, credit_amount_bin, age_bin, everything())
+```
+
+# Variable selection methods
+
+The variable selection methods for classification methods
+
+# Training/test data division and resampling
+
+# Comparison
+
+# Summary and conclusions
 
 ### Hadlding missing data
 
@@ -152,56 +199,6 @@ df_f %>% as_tibble()
 
 ### Types, scales features of data
 
-```{r}
-#Types of variables
-features <- df %>% names()
-type <- c('qualitative', 'quantitative', 'qualitative', 'qualitative',
-          'quantitative', 'qualitative', 'qualitative', 'quantitative',
-          'qualitative', 'qualitative', 'quantitative', 'qualitative',
-          'quantitative', 'qualitative', 'qualitative', 'quantitative',
-          'qualitative', 'quantitative', 'qualitative', 'qualitative',
-          'qualitative')
-specific_type <- c('discrete', 'discrete', 'discrete', 'discrete',
-                   'continuous', 'discrete', 'discrete', 'continuous',
-                   'discrete', 'discrete', 'discrete', 'discrete',
-                   'discrete', 'discrete', 'discrete', 'discrete',
-                   'discrete', 'discrete', 'discrete', 'discrete',
-                   'discrete')
-scales <- c('ordinal', 'ordinal', 'nominal', 'nominal',
-            'ratio', 'ordinal', 'ordinal', 'ratio',
-            'nominal', 'nominal', 'ratio', 'nominal',
-            'ratio', 'nominal', 'nominal', 'ordinal',
-            'ordinal', 'discrete', 'nominal', 'nominal',
-            'nominal')
-pretty_names <- c('Status of existing checking account', 'Duration in month',
-                  'Credit history', 'Purpose of taking a credit', 'Credit amount',
-                  'Savings account/bonds', 'Present employment since',
-                  'Installment rate in percentage of disposable income',
-                  'Personal status and sex', 'Other debtors / guarantors',
-                  'Present residence since', 'Property',
-                  'Age in years', 'Other installment plans',
-                  'Housing', 'Number of existing credits at this bank',
-                  'Job', 'Number of people being liable to provide maintenance for',
-                  'Telephone', 'Foreign worker', 'Class of a customer')
 
-dictionary <- tibble(features = features,
-                     general_type = type,
-                     specific_type = specific_type,
-                     scale = scales,
-                     pretty_name = pretty_names)
-dictionary
-```
-With that dictionary we can much easier examine the overall nature of the dataset. Types of variables, their scales and names in a readable format will more likely allow for the more effective experimentation in the next phases of the project.
 
-## Model
-
-## Diagnostics
-<!-- Residuals Error Checking -->
-
-## Forecast
-
-## Analysis
-
-## Conclusion
-
-## References
+# References
