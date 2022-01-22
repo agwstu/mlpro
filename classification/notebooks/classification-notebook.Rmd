@@ -14,18 +14,19 @@ output:
 ---
 
 # Description of data and problem analyzed
-The dataset was donated in 1994. It consists of 20 attributes and 1000 instances. We downloaded it from Machine Learning repository [@Dua:2019].Two classes: "good" and "bad" credits are associated with the dataset. Within 20 variables there are hidden 13 categorical ones and 7 numerical. The dataset is unbalanced with 700 observations that belong to the "good" class and 300 belonging to the "bad" one [@Wang2003]. As stated in the literature it is a result of experiment. Each applicant was described by a set of attributes [@ODea2001].
+The dataset was donated in 1994. It consists of 20 attributes and 1000 instances. We downloaded it from Machine Learning repository [@Dua:2019]. Two classes: "good" and "bad" credits are associated with the dataset. Within 20 variables there are hidden 13 categorical ones and 7 numerical. The dataset is unbalanced with 700 observations that belong to the "good" class and 300 belonging to the "bad" one [@Wang2003]. As stated in the literature it is a result of experiment. Each applicant was described by a set of attributes [@ODea2001].
 
 ## Reading data
 ```{r, echo = FALSE}
-source('..\\src\\utils\\fit_table.r')
+source('..\\src\\utils\\fit_table.R')
 ```
 
 ```{r}
 ####Agata - Loading Data
-df <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.csv")
+#df <- read.csv("~/Desktop/studia/magisterka/3sem/ML2/mlpro/dataset_31_credit-g.csv")
 ####Mateusz - Loading Data
-pacman::p_load(tidyverse, kableExtra, treemapify)
+pacman::p_load(tidyverse, kableExtra, treemapify, caret, xgboost, pROC,
+               dummies)
 raw_data <- read.csv("..\\data\\raw\\dataset_31_credit-g.csv")
 df <- read.csv("..\\data\\raw\\dataset_31_credit-g.csv")
 raw_data %>% fit_table()
@@ -36,7 +37,7 @@ We prepared the mapping table that will serve in the next phases of the project 
 during the exploratory data analysis.
 ```{r}
 #Types of variables
-features <- df %>% names()
+dimensions <- raw_data %>% names()
 type <- c('qualitative', 'quantitative', 'qualitative', 'qualitative',
           'quantitative', 'qualitative', 'qualitative', 'quantitative',
           'qualitative', 'qualitative', 'quantitative', 'qualitative',
@@ -65,7 +66,7 @@ pretty_names <- c('Status of existing checking account', 'Duration in month',
                   'Housing', 'Number of existing credits at this bank',
                   'Job', 'Number of people being liable to provide maintenance for',
                   'Telephone', 'Foreign worker', 'Class of a customer')
-dictionary <- tibble(features = features,
+dictionary <- tibble(dimensions = dimensions,
                      general_type = type,
                      specific_type = specific_type,
                      scale = scales,
@@ -78,50 +79,55 @@ With that dictionary we can much easier examine the overall nature of the datase
 their scales and names in a readable format will more likely allow for the more effective
 experimentation in the next phases of the project.
 
-## Splitting dataset
-```{r}
-train_data <- raw_data %>% slice_head(n = 666)
-test_data <- raw_data %>% slice_tail(n = 334)
-```
+## Formatting variables
 
-We follow the split suggested to having 66 % observations in the train dataset
-and remaining 34 % in the test dataset [ODea2001].
+```{r}
+raw_data <- raw_data %>% mutate(class = factor(class, levels = c("bad", "good")))
+```
 
 # Descriptive analyses of the data
 
 ## Distributions
 
-Assessing the distribution of the credit amount across groups
-might be interesting. Hypothetically, good clients are these with larger
-credit amount. If they weren't classified to that group they would not
-be given a credit.
+In the dataset description it was stated that it is heavily imbalanced.
 
-```{r}
-raw_data %>%
-  ggplot(aes(credit_amount, color = class)) +
-  geom_density() +
-  stat_density(geom = 'line', position = 'dodge', size = 1) +
-  labs(title = "Comparison of credit amount among group of respondents.") +
-  theme(plot.title = element_text(hjust = 0.5))
-```
 ```{r}
 raw_data %>%
   ggplot(aes(x = class)) +
   geom_bar() +
   labs(title = "Distribution of the outcome variable.",
-       y = "Count of respondents belonging to the particular group") +
+       y = "Respondents count") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
+Plot above confirms that we need to address this in our analysis. Followingly,
+the distribution of the credit amount across groups might be interesting.
+Hypothetically, good clients are these with larger credit amount from the bank persepective.
+
+```{r}
+raw_data %>%
+        ggplot(aes(credit_amount, color = class)) +
+        geom_density() +
+        stat_density(geom = 'line', position = 'dodge', size = 1) +
+        labs(title = "Comparison of credit amount among group of respondents.") +
+        theme(plot.title = element_text(hjust = 0.5))
+```
+
+Counterintuitively, the credit amount at the high level is concerned with people described as bad credit risk.
+Maybe it refers to the liquidity of respondents.
+
+## Advanced visualizations
+
 We would like to bridge the gap between the purpose of taking the credit, the mean credit amount its duration through advanced visualization technique - treemap.
 
 ```{r}
 data_to_treemap <-
   raw_data %>%
     group_by(purpose) %>%
-    summarise(across(c(credit_amount, age, duration),
+    summarise(across(c(credit_amount, duration),
                       list(mean = ~mean(.))),
               .groups = "rowwise")
 ```
+We group the data by the purpose and then compute averages across credit amount and its duration.
 
 ```{r}
 ggplot(data_to_treemap,
@@ -133,7 +139,9 @@ ggplot(data_to_treemap,
   theme(plot.title = element_text(hjust = 0.5)) +
   labs(fill = guide_legend(title = "Mean duration"))
 ```
-Retraining is the purpose with the smallest credit duration. Used car, business and other purposes are the ones with the longest duration. What is more, we are interested in
+Retraining is the purpose with the smallest credit duration. Used car, business and other purposes are the ones with the longest duration.
+
+The age of respondents across credit risk groups and their credit history might be an insightful point in the analysis.
 
 ```{r}
 raw_data %>%
@@ -147,11 +155,12 @@ raw_data %>%
     theme(plot.title = element_text(hjust = 0.5)) +
     guides(fill="none")
 ```
+
 Surprisingly even though people delayed paying their credit previously, at young age, they are still assigned to the group of a good credit risk. On the other hand, in accordance with our intuition existing credit was paid mostly for mature people that are wealthier.
 
 # Variable transformations
 
-We start with assigning the credit duration and age to 2 bins. Out assumption is that there might be some dependency between two groups and two artificially created variables.
+Out assumption is that there might be some dependency between two groups and two artificially created variables. We use simple statistical operations for that.
 
 ```{r}
 interim_data <- raw_data %>%
@@ -163,9 +172,378 @@ interim_data <- raw_data %>%
 
 # Variable selection methods
 
-The variable selection methods for classification methods
+# Training/test data division
 
-# Training/test data division and resampling
+In order to obtain the models that are able to generalize well we follow the split suggested to having 66 % observations in the train dataset and remaining 34 % in the test dataset [ODea2001].
+
+```{r}
+set.seed(123)
+train_data_obs <- createDataPartition(raw_data$class,
+                                      p = 0.66,
+                                      list = FALSE)
+train_data  <- raw_data[train_data_obs,]
+test_data  <- raw_data[-train_data_obs,]
+```
+
+## oversampling
+Since the distributon of both classes is not equal it seems as a reasonable choice to include oversampling techniques.
+
+```{r}
+oversampled_train_data <-
+        ROSE::ovun.sample(formula = class ~ .,
+                          data = train_data,
+                          method = "both",
+                          p = 0.5,
+                          N = nrow(train_data),
+                          seed = 54378)[["data"]]
+```
+The variable selection methods for classification methods with RFE method is performed. We think that recursive feature elimination can lead to very good results. It starts with all the features specified as parameter. Later, the weakest features are removed.
+
+```{r}
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+results <- rfe(x = train_data[,1:20],
+               y = train_data[,21],
+               rfeControl=control)
+print(results)
+```
+
+3 out of the top 5 most influential variables are intuitive: credit amount, duration and credit history. They showed the remarkable impact on the outcome variable in the analysis.
+
+```{r}
+predictors(results)
+```
+```{r}
+plot(results, type=c("g", "o"))
+```
+
+
+## Bagging
+
+```{r}
+n <- nrow(train_data)
+model_to_bag_formula <- class ~ .
+results_bag <- list()
+
+for (bag in 1:41) {
+  set.seed(348 + bag)
+  data_bag <-
+          train_data[sample(x = 1:n, size = n, replace = TRUE),]
+  results_bag[[bag]] <- glm(model_to_bag_formula, data_bag, family = binomial(link = "logit"))
+}
+```
+Every estimated model can be used independently for the prediction.
+
+```{r }
+pred_bag <- sapply(results_bag, function(x)
+                       predict(object = x,
+                               newdata = test_data,
+                               type = "response")) %>%
+                data.frame()
+```
+
+Below we present the histogram of number of votes across 41 models.
+
+```{r}
+pred_bag %>%
+      dplyr::select(dplyr::starts_with("X")) %>%
+      mutate(across(.cols = everything(), .fns = function(x) as.numeric(x < 0.5))) %>%
+      rowwise() %>%
+      mutate(no_votes = sum(c_across(X1:X41))) %>%
+      ggplot(aes(no_votes)) +
+      geom_histogram(col = "black", fill = "blue", binwidth = 1) +
+      labs(
+              title = "Frequency of votes for single observations",
+              x = "Number of votes",
+              y = "Total count",
+              caption = "source: calculations based on classes in Machine Learning 2 predictive models, deep learning, neural network, University of Warsaw"
+      ) + theme(plot.title = element_text(hjust = 0.5, size = 25))
+```
+
+Most often the models do not differ between each other in terms of the final choice.
+Nevertheless, this model shows that data resampling might play an important role during projects.
+
+Using `glm()` we are modelling the people associated with the good credit risk, because it is the second level, the referenced one.
+
+```{r }
+pred_bag_final <-
+        ifelse(rowSums(pred_bag > 0.5) > 41/2,
+               "good", "bad") %>%
+                factor(., levels = c("good", "bad"))
+```
+Now, the accuracy of the model needs to be assessed. Accuracy matrix in assessing credit risk is very insightful from the bank perspective. Based on their astrategy they may change the distribution of it by choosing the probability level `p` for instance to the higher value.
+
+```{r}
+confusionMatrix(data = pred_bag_final,
+                reference = test_data$class,
+                positive = "good")
+```
+
+```{r}
+ROC_test_bag <-
+  pROC::roc(as.numeric(test_data$class == "good"),
+      as.numeric(pred_bag_final))
+```
+```{r}
+list(
+  ROC_test_bag   = ROC_test_bag
+  ) %>%
+  pROC::ggroc(alpha = 0.5, linetype = 1, size = 1) +
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1),
+               color = "red",
+               linetype = "dashed") +
+  labs(subtitle = paste0("Gini TEST: ",
+                         "bag = ",
+                         round(100 * (2 * auc(ROC_test_bag) - 1), 3)
+                         ),
+       legend = "A") +
+  theme_bw() + coord_fixed() +
+  scale_color_brewer(palette = "Set2")
+```
+
+## xgboost
+
+```{r}
+paramsGrid <-
+    expand.grid(subsample = c(0.2, 0.4, 1),
+                colsample_bynode = c(0.1, 1),
+                max_depth = c(2, 3, 4 ,5),
+                eta = c(0.3, 0.1, 0.05, 0.01),
+                gamma = c(0, 1, 3, 5, 10),
+                early_stopping_rounds = c(5, 10),
+                min_child_weight = c(10, 20, 30)) %>%
+    mutate(ID = row_number())
+```
+
+```{r}
+prepare_data_for_xgboost <- function(dictionary, data_to_proc){
+  data_label <- data_to_proc %>%
+    dplyr::select(class) %>%
+    mutate(class == "good") %>%
+    pull() %>%
+    as.integer()
+
+  qualitative_vars <- dictionary %>%
+    filter(general_type == 'qualitative') %>%
+    pull(dimensions)
+
+  qualitative_no_target_vars <- qualitative_vars[1:13]
+
+  other_vars <- dictionary %>%
+    filter(general_type != 'qualitative') %>%
+    pull(dimensions)
+
+  data_to_dummify <- data_to_proc %>%
+                       dplyr::select(
+                         qualitative_no_target_vars
+                       )
+
+  dummified_test_data <-
+    dummy.data.frame(data_to_dummify %>%
+                       as.data.frame(),
+                     names = NULL, omit.constants=TRUE,
+                     dummy.classes = getOption("dummy.classes"),
+                     all = TRUE)
+
+  xgboost_prepared_data <- dummified_test_data %>%
+    add_column(data_to_proc %>% select(other_vars)) %>%
+    as.matrix()
+
+  final_xgb_data <- xgb.DMatrix(data = xgboost_prepared_data,
+              label = data_label)
+
+  return (final_xgb_data)
+}
+```
+
+```{r, results = 'hide'}
+set.seed(123476)
+paramsGrid <- paramsGrid[sample(1:nrow(paramsGrid), 100), ]
+xgb.train <- prepare_data_for_xgboost(dictionary, train_data)
+gridSearchResults <- list()
+
+for (i in 1:nrow(paramsGrid)) {
+  # Extract Parameters to test
+  thisID               <- paramsGrid[i, "ID"]
+  thisSubsample        <- paramsGrid[i, "subsample"]
+  thisColsample_bynode <- paramsGrid[i, "colsample_bynode"]
+  thisMax_depth        <- paramsGrid[i, "max_depth"]
+  thisEta              <- paramsGrid[i, "eta"]
+  thisGamma            <- paramsGrid[i, "gamma"]
+  thisEarly_stopping_rounds <- paramsGrid[i, "early_stopping_rounds"]
+  thisMin_child_weight <- paramsGrid[i, "min_child_weight"]
+
+  cat("processing combination", thisID, "...\n")
+
+  seed_split <- 123477
+  set.seed(seed_split)
+  xgboostModelCV <- xgb.cv(
+    data = xgb.train,
+    nfold = 10,
+    booster = "gbtree",
+    objective = "binary:logistic",
+    eta = thisEta,
+    max_depth = thisMax_depth,
+    min_child_weight = thisMin_child_weight,
+    gamma = thisGamma,
+    lambda = 0.5,
+    subsample = thisSubsample,
+    colsample = 1,
+    colsample_bytree = 1,
+    colsample_bylevel = 0.5,
+    colsample_bynode = thisColsample_bynode,
+    metrics = "auc",
+    eval.metric = "auc",
+    nrounds = 1000,
+    nthreads = 2,
+    early_stopping_rounds = thisEarly_stopping_rounds,
+    watchlist = list(val1 = xgb.train),
+    verbose = 1
+  )
+
+  xvalidationScores <- as.data.frame(xgboostModelCV$evaluation_log)
+  train_auc_mean <- tail(xvalidationScores$train_auc_mean, 1)
+  train_auc_std  <- tail(xvalidationScores$train_auc_std, 1)
+  test_auc_mean  <- tail(xvalidationScores$test_auc_mean, 1)
+  test_auc_std   <- tail(xvalidationScores$test_auc_std, 1)
+  train.gini     <- 2 * tail(xvalidationScores$train_auc_mean, 1) - 1
+  test.gini      <- 2 * tail(xvalidationScores$test_auc_mean,1) - 1
+  gridSearchResults[[i]] <- c(train.gini,
+                              test.gini,
+                              train_auc_mean,
+                              train_auc_std,
+                              test_auc_mean,
+                              test_auc_std,
+                              thisSubsample,
+                              thisColsample_bynode,
+                              thisMax_depth,
+                              thisEta,
+                              thisGamma,
+                              thisEarly_stopping_rounds,
+                              thisMin_child_weight)
+}
+```
+
+
+```{r}
+output <-
+    as_tibble(do.call(rbind, gridSearchResults)) %>%
+    mutate(id = row_number()) %>%
+    select(id, everything())
+
+names(output) <-
+  varnames <- c("id",
+                "train_Gini", "test_Gini",
+                "train_AUC_mean", "train_AUC_std",
+                "test_AUC_mean", "test_AUC_std",
+                "subsample", "colsample_bynode", "max_depth", "eta",
+                "gamma", "early_stopping_rounds", "min_child_weight"
+  )
+```
+
+```{r}
+bestParams <-
+  output %>%
+  mutate(diff = train_AUC_mean - test_AUC_mean) %>%
+  arrange(desc(test_AUC_mean)) %>%
+  top_n(1) %>%
+  select(-starts_with("train"), -starts_with("test")) %>%
+  sample_n(size = 1) %>%
+  unlist()
+bestParams
+```
+```{r}
+seed_split <- 123477
+set.seed(seed_split)
+xgb.fit.cv <- xgb.cv(
+  nfold = 10,
+  data = xgb.train,
+  booster = "gbtree",
+  objective = "binary:logistic",
+  eta = bestParams["eta"],
+  max_depth = bestParams["max_depth"],
+  min_child_weight = bestParams["min_child_weight"],
+  gamma = bestParams["gamma"],
+  lambda = 0.5,
+  subsample = bestParams["subsample"],
+  colsample = 1,
+  colsample_bytree = 1,
+  colsample_bylevel = 0.5,
+  #colsample_bynode = bestParams["colsample_bynode"],
+  metrics = "auc",
+  eval.metric = "auc",
+  nrounds = 1000,
+  nthreads = 2,
+  early_stopping_rounds = bestParams["early_stopping_rounds"],
+  watchlist=list(val1 = xgb.train),
+  verbose = 1
+)
+```
+
+```{r}
+xgb.fit <- xgb.train(
+  data = xgb.train,
+  booster = "gbtree",
+  objective = "binary:logistic",
+  eta = bestParams["eta"],
+  max_depth = bestParams["max_depth"],
+  min_child_weight = bestParams["min_child_weight"],
+  gamma = bestParams["gamma"],
+  lambda = 0.5,
+  subsample = bestParams["subsample"],
+  colsample = 1,
+  colsample_bytree = 1,
+  colsample_bylevel = 0.5,
+  colsample_bynode = bestParams["colsample_bynode"],
+  metrics = "auc",
+  eval.metric = "auc",
+  nrounds = xgb.fit.cv$best_iteration,
+  nthreads = 2,
+  early_stopping_rounds = bestParams["early_stopping_rounds"],
+  watchlist=list(val1 = xgb.train),
+  verbose = 0
+)
+```
+```{r}
+pred.xgb.train <- predict(xgb.fit, xgb.train, reshape = TRUE)
+ROC.train <- roc(getinfo(xgb.train, "label"), pred.xgb.train)
+print(2 * auc(ROC.train) - 1)
+```
+```{r}
+importance_matrix <- xgb.importance(model = xgb.fit)
+print(importance_matrix[])
+xgb.ggplot.importance(importance_matrix = importance_matrix,
+                      n_clusters = 1) + guides(fill = FALSE) +
+        scale_fill_manual(values = "black")
+
+```
+
+In overall we have achieved interesting results. However, we clearly see that the model is overtrained on the oversampled dataset. Feature importance are aligned with previous experiments. We would like to check the model performance on the test dataset.
+
+```{r, results = 'hide'}
+xgb_test <- prepare_data_for_xgboost(dictionary, test_data)
+pred_xgb_test <- predict(xgb.fit, xgb_test, reshape = TRUE)
+ROC.test <- pROC::roc(getinfo(xgb_test, "label"), pred_xgb_test)
+print(2 * auc(ROC.test) - 1)
+```
+
+
+```{r}
+list(
+  ROC.train = ROC.train,
+  ROC.test  = ROC.test
+) %>%
+  pROC::ggroc(alpha = 0.5, linetype = 1, size = 1) +
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1),
+               color = "grey",
+               linetype = "dashed") +
+  labs(subtitle = paste0("Gini: ",
+                         "TRAIN = ",
+                         round(100*(2 * auc(ROC.train) - 1), 1), "%, ",
+                         "TEST = ",
+                         round(100*(2 * auc(ROC.test) - 1), 1), "%"),
+       caption = "source: calculations based on classes in Machine Learning 2 predictive models, deep learning, neural network, University of Warsaw") +
+  theme_bw() + coord_fixed()
+```
 
 # Comparison
 
