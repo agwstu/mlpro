@@ -457,6 +457,30 @@ performance_comparison <- bind_cols(tibble(tree         =  predict(basic_tree,  
         map_dfr(getRegressionMetrics, real = test_data$year_scaled, .id = "model")
 ```
 
+
+
+
+
+
+
+
+
+
+```{r}
+y_pred <- xgb_model %>% predict(test_data)
+
+dt <- tibble(
+  y = test_data$year_scaled,
+  y_pred = as.numeric(y_pred)
+)
+dt %>% glimpse()
+
+dt %>%
+  ggplot(aes(x = y, y = y_pred)) +
+  geom_point() +
+  geom_smooth(method = lm, se = T)
+```
+
 # Summary and conclusions
 
 First of all, for the first time we have been modelling on dataset of this size.
