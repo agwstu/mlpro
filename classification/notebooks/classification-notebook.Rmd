@@ -216,6 +216,7 @@ predictors(results)
 plot(results, type=c("g", "o"))
 ```
 
+# Different machine learning methods
 
 ## Bagging
 
@@ -269,6 +270,10 @@ pred_bag_final <-
         ifelse(rowSums(pred_bag > 0.5) > 41/2,
                "good", "bad") %>%
                 factor(., levels = c("good", "bad"))
+
+pred_bag_num <- ifelse(rowSums(pred_bag > 0.5) > 41/2,
+                         1, 0)
+
 ```
 Now, the accuracy of the model needs to be assessed. Accuracy matrix in assessing credit risk is very insightful from the bank perspective. Based on their astrategy they may change the distribution of it by choosing the probability level `p` for instance to the higher value.
 
@@ -278,27 +283,6 @@ confusionMatrix(data = pred_bag_final,
                 positive = "good")
 ```
 
-```{r}
-ROC_test_bag <-
-  pROC::roc(as.numeric(test_data$class == "good"),
-      as.numeric(pred_bag_final))
-```
-```{r}
-list(
-  ROC_test_bag   = ROC_test_bag
-  ) %>%
-  pROC::ggroc(alpha = 0.5, linetype = 1, size = 1) +
-  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1),
-               color = "red",
-               linetype = "dashed") +
-  labs(subtitle = paste0("Gini TEST: ",
-                         "bag = ",
-                         round(100 * (2 * auc(ROC_test_bag) - 1), 3)
-                         ),
-       legend = "A") +
-  theme_bw() + coord_fixed() +
-  scale_color_brewer(palette = "Set2")
-```
 
 ## xgboost
 
@@ -508,46 +492,83 @@ pred.xgb.train <- predict(xgb.fit, xgb.train, reshape = TRUE)
 ROC.train <- roc(getinfo(xgb.train, "label"), pred.xgb.train)
 print(2 * auc(ROC.train) - 1)
 ```
+
+Below we present the most influential features.
+
 ```{r}
 importance_matrix <- xgb.importance(model = xgb.fit)
 print(importance_matrix[])
-xgb.ggplot.importance(importance_matrix = importance_matrix,
-                      n_clusters = 1) + guides(fill = FALSE) +
-        scale_fill_manual(values = "black")
+```
 
+Some of the variable names might be not intuitive.
+
+```{r}
+pretty_importance_matrix <-
+        importance_matrix %>%
+        head(10) %>%
+        separate(Feature, into = c('Feature', 'suffix'), sep = "'") %>%
+        mutate(suffix = if_else(is.na(suffix), '', suffix)) %>%
+        inner_join(dictionary %>% select(dimensions, pretty_name), by = c("Feature" = "dimensions")) %>%
+        select(-Feature)  %>%
+        rename(Feature = pretty_name) %>%
+        select(Feature, everything()) %>%
+        unite(col = "Feature", Feature:suffix, sep = " ")
+```
+With matrix formatted with pretty names we can plot the top variables that influence the prediction.
+
+```{r}
+xgb.ggplot.importance(importance_matrix = pretty_importance_matrix, n_clusters = 1) +
+        guides(fill = FALSE) +
+        scale_fill_manual(values = "black") +
+        theme(plot.title = element_blank())
 ```
 
 In overall we have achieved interesting results. However, we clearly see that the model is overtrained on the oversampled dataset. Feature importance are aligned with previous experiments. We would like to check the model performance on the test dataset.
 
-```{r, results = 'hide'}
-xgb_test <- prepare_data_for_xgboost(dictionary, test_data)
-pred_xgb_test <- predict(xgb.fit, xgb_test, reshape = TRUE)
-ROC.test <- pROC::roc(getinfo(xgb_test, "label"), pred_xgb_test)
-print(2 * auc(ROC.test) - 1)
+
+```{r}
+ROC_test_bag <- pROC::roc(as.numeric(test_data$class == "good"), as.numeric(pred_bag_num))
+print(2 * auc(ROC_test_bag) - 1)
 ```
 
 
+
+```{r, results = 'hide'}
+xgb_test <- prepare_data_for_xgboost(dictionary, test_data)
+pred_xgb_test <- predict(xgb.fit, xgb_test, reshape = TRUE)
+ROC_test_xgb <- pROC::roc(getinfo(xgb_test, "label"), pred_xgb_test)
+print(2 * auc(ROC_test_xgb) - 1)
+```
+
+# Comparison
+
+In the classification problem we check the ROC using test dataset.
+
 ```{r}
 list(
-  ROC.train = ROC.train,
-  ROC.test  = ROC.test
+  ROC_test_bag = ROC_test_bag,
+  ROC_test_xgb  = ROC_test_xgb
 ) %>%
   pROC::ggroc(alpha = 0.5, linetype = 1, size = 1) +
   geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1),
                color = "grey",
                linetype = "dashed") +
-  labs(subtitle = paste0("Gini: ",
-                         "TRAIN = ",
-                         round(100*(2 * auc(ROC.train) - 1), 1), "%, ",
-                         "TEST = ",
-                         round(100*(2 * auc(ROC.test) - 1), 1), "%"),
-       caption = "source: calculations based on classes in Machine Learning 2 predictive models, deep learning, neural network, University of Warsaw") +
+  labs(caption = "source: calculations based on classes \n in Machine Learning 2 predictive models, deep learning, neural network, \n University of Warsaw") +
   theme_bw() + coord_fixed()
 ```
 
-# Comparison
+XGBoost is much better in this case. Nevertheless, it was a good learning opportunity to prepare bagging in this problem.
 
 # Summary and conclusions
+
+To conclude we know that classification problem associated with credit risk is a true real-life scenario. However, considering that banks are most often conservative institutions we do not think that recommendation of XGBoost would be considered.
+
+The dataset was interesting to analyze with a good ratio of numeric to factor variables. It allowed for a fruitful descriptive data analysis. What is more, the dimensions are well described and therefore interpretable.
+
+The interpretability is specified at the level of the whole model for XGBoost. Our assumptions about the particular variables were correct.
+
+In the modelling phase the models are overtrained. The difference between the results on the training and testing dataset are remarkable.
+
 
 ### Hadlding missing data
 
