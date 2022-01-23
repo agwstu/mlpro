@@ -16,7 +16,6 @@ html_document:
 
 # Description of data and problem analyzed
 
-
 Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011. Most of the observations relate to the  2000s [@Bertin-Mahieux2011]. We downloaded it from the Machine Learning Repository [@Dua:2019].
 
 ```{r, echo = FALSE}
@@ -30,8 +29,9 @@ experiment <- FALSE
 
 There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall, timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack [@Bertin-Mahieux2013].
 
-
 ## Data Preprocessing
+
+Data preprocessing is told to take around 80 % of the data science project. In our case the data is very well prepared, there
 
 ## Reading data
 ```{r, echo = FALSE}
@@ -47,9 +47,11 @@ if (experiment){
 raw_data %>% fit_table()
 ```
 
-The first column in the dataset correspond to the year that will be predicted from the features. We rename it for the sake of the modelling purposes. With the MSD many tasks can be addressed, however the song release year brings many practical applications and there are not a lot of research papers that relate to this prediction problem. Only audio features are used in this problem which is justified with the fact that listeners are often fond of music from certain periods of their lives. Another reason might be the evolution of timbre across years.
+The first column in the dataset correspond to the year that will be predicted from the features. With the MSD many tasks can be addressed, however the song release year brings many practical applications and there are not a lot of research papers that relate to this prediction problem. Only audio features are used in this problem which is justified with the fact that listeners are often fond of music from certain periods of their lives. Another reason might be the evolution of timbre across years.
 
 ## Renaming columns
+
+We rename the first column for the sake of the modelling purposes. 
 
 ```{r}
 raw_data <- raw_data %>%
@@ -58,11 +60,6 @@ raw_data <- raw_data %>%
 raw_data %>% fit_table()
 ```
 
-In the next step we split the dataset into the attributes and the target variable. Thanks to that we will not mix the attributes in the feature engineering process.
-
-```{r}
-target_data <- raw_data %>% select(year)
-```
 ## Scaling
 
 The authors in the main article mapped the year values using linear mapping to [0,1] range [@Bertin-Mahieux2011]. We follow the convention in the analysis below.
@@ -77,28 +74,14 @@ raw_data$year_scaled <- range_to_0_1(raw_data$year)
 raw_data$year_scaled <- range_to_0_1(raw_data$year)
 ```
 
-## Splitting dataset
-
-The result might suggest that the dataset is somehow not completely random. It is confirmed with the fact that the following train / test split should be respected. First 463 715 observations should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
-
-```{r}
-if (experiment){
-  train_data <- raw_data %>% slice_head(n = 890) %>% select(-year)
-  test_data <- raw_data %>% slice_tail(n = 110)  %>% select(-year)
-} else{
-  train_data <- raw_data %>% slice_head(n = 463715)  %>% select(-year)
-  test_data <- raw_data %>% slice_tail(n = 51630) %>% select(-year)
-}
-```
-
-The dataset authors add that thanks to that split 'producer effect' will be avoided.
-Next, we confirm that the remaining attributes correspond to the timbre covariates.
+## Splitting covariates
 
 ```{r}
 timbre_average_data <- raw_data %>%
         select(V2:V13)
 timbre_average_data %>% fit_table()
 ```
+
 We needed to investigate what the timbre in the sound analysis actually means. It is described as everything that can be differentiated between two different tracks by the listener having kept the same pitch, spatial location and loudness and refers to the perceptual quality of a sound and color. "Brightness", "clarity", "harshness", "fullness" and "noisiness" are frequently used adjectives that are associated with the timbre word [@Allen2018].
 
 ```{r}
@@ -107,17 +90,19 @@ timbre_covariance_data <- raw_data %>%
 timbre_covariance_data %>% fit_table()
 ```
 
+Covariance is taken over all segments, where each segment is described by 12-dimensional vector.
+
 ## Handling missing values
 
 ```{r}
 raw_data %>%
         summarise(across(everything(), ~sum(is.na(.))))
 ```
-There are no missing values across columns and in the whole dataset. This is an important insight that will allow for an easier later phases of the project e.g exploratory data analysis and modelling.
+There are no missing values across columns and in the whole dataset. This is an important insight. It is likely to influence an easier later phases of the project e.g exploratory data analysis and modelling.
 
 # Descriptive analyses of the data
 
-Having described the dataset we can follow the analysis and in the next points visualized dataset including both target and features on which the model will be trained.
+Having prepared the dataset we can follow the analysis and in the next points visualized dataset including both target and features on which the model will be trained.
 
 ## One-dimensional plots
 
@@ -138,10 +123,12 @@ raw_data %>%
 ## Two-dimensional plots
 
 ### Number of songs across centuries
+
 For the first plot we have decided to squeeze the year variable based on the century because the distribution of the songs across years is highly nonuniform.
+
 ```{r}
 timbre_average_data %>%
-    mutate(year = target_data$year) %>%
+    mutate(year = raw_data$year) %>%
     mutate(century = if_else(year <= 2000, 'XX', 'XXI')) %>%
     group_by(century) %>%
     count() %>%
@@ -164,7 +151,7 @@ We see that the count of songs increase with the centuries, although, there are 
 
 ```{r}
 timbre_average_data %>%
-    mutate(year = target_data %>% pull(year)) %>%
+    mutate(year = raw_data %>% pull(year)) %>%
     mutate(decade = as.factor(floor(year/10)*10)) %>%
     rename(loudness = V2) %>%
     select(loudness, decade) %>%
@@ -178,11 +165,12 @@ timbre_average_data %>%
 Increase in loudness is spotted across decades. Nowadays people listen to louder music more.
 
 ### Correlation matrix
+
 An important area that should not be neglected in the process of building machine learning model is creating the correlation matrix based on which we will continue investigation regarding the two-dimensional plots. We have decided to learn more about the timbre split suggested by the authors. Based on that we can check whether average timbre or timbre covariance have stronger influence on the outcome variable.
 
 ```{r}
 corr_average <- timbre_average_data %>%
-        mutate(year = target_data$year) %>%
+        mutate(year = raw_data$year) %>%
         cor()
 
 ggcorrplot(corr_average, hc.order = TRUE, type = "lower", lab = TRUE) +
@@ -194,7 +182,7 @@ Based on the correlation matrix we spot two variables that might be important in
 
 ```{r}
 corr_covariance <- timbre_covariance_data %>%
-        mutate(year = target_data$year) %>%
+        mutate(year = raw_data$year) %>%
         cor()
 ```
 
@@ -214,7 +202,7 @@ Because there are a lot of columns inside the timbre covariance matrix we choose
 
 ```{r}
 corr_covariance <-  timbre_covariance_data %>%
-        mutate(year = target_data$year) %>%
+        mutate(year = raw_data$year) %>%
         select(all_of(high_corr_columns)) %>%
         cor()
 ```
@@ -230,9 +218,10 @@ ggcorrplot(corr_covariance,
   theme(plot.title = element_text(hjust = 0.5, size = 20))
 ```
 
-The highest correlation with the target variable is spotted between variable V21, V74, V15 and V40 and year. What is more the multicollinearity might be spotted for variable V15 and V21 with the correlation value 0.48.
+The highest correlation with the target variable is spotted between variable V21, V74, V15 and V40 What is more the multicollinearity might be spotted for variable V15 and V21 with the correlation value 0.48.
 
 ## Statistical analysis
+
 ```{r}
 source("..\\src\\utils\\t_test_across_centuries.R")
 t_test_test_across_centuries(timbre_average_data %>%
@@ -247,101 +236,139 @@ t_test_test_across_centuries(timbre_covariance_data %>%
 t_test_test_across_centuries(timbre_covariance_data %>%
                                      mutate(year = target_data$year),
                              'V15')
+test_test_across_centuries(timbre_covariance_data %>%
+                                     mutate(year = target_data$year),
+                             'V74')
 ```
+
 We have show that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
 
 # Variable transformation
 
+In this step we embrace creating interactions between the most influential variables accordingly to the descriptive analysis step.
+
 ## Interactions
+
+Since we deal with only numeric variables we do not need to perform dummification step.
+
 ```{r}
-first_model_formula <- year_scaled ~ V2 + V7 + V21 + V15
+formula_for_interactions <- year_scaled ~ V2 + V7 + V21 + V15 + V74
 
-rec <- recipe(first_model_formula, data = train_data )
+rec <- recipe(formula_for_interactions, data = raw_data ) # is it correct?
 
-int_mod_1 <- rec %>%
-  step_interact(terms = ~ V2:starts_with("V"))
+interact_terms <- rec %>%
+  step_interact(terms = ~ starts_with("V"):starts_with("V"))
 
-int_mod_1 <- prep(int_mod_1, training = train_data)
+interact_prep <- prep(interact_terms, training = raw_data)
 
-transformed_data <- bake(int_mod_1, train_data)
+transformed_data <- bake(interact_prep, raw_data)
+
+transformed_data %>% names()
 ```
+
+Final transformed data used in the modelling consist of 16 dimensions. They are a result of variable transformation step.
+
 # Variable selection
 
-We investigated two packages varSelRF [@varselrf] and VSURF [@genuer:hal-01251924] for variable selection step. We have chosen
-them mainly because of their dependency on the randomForest package that was used during the classes. The latter one
-is not implemented for regression problem. Hence, varSelfRF will be used which is more complicated procedure. It
-consists of three steps: thresholding, interpretation and prediction step. Thresholding is based on variable importance.
-The interpretation embeds random forest models starting with the one built only on the variables chosen in the previous step.
-Next, the stepwise selection procedure is applied in the final, prediction procedure.
+We investigated two packages varSelRF [@varselrf] and VSURF [@genuer:hal-01251924] for variable selection step. We have chosen them mainly because of their dependency on the randomForest package that was used during the classes. The latter one is not implemented for regression problem. Hence, varSelfRF will be used which is more complicated procedure. It consists of three steps: thresholding, interpretation and prediction step. Thresholding is based on variable importance. The interpretation embeds random forest models starting with the one built only on the variables chosen in the previous step. Next, the stepwise selection procedure is applied in the final, prediction procedure.
 
-```{r}
-vsurf <- VSURF(x = dat_1 %>% select(-year_scaled), y = dat_1$year_scaled,
-               ntree = 100, nfor.thres = 20,
-               nfor.interp = 10, nfor.pred = 10)
-```
-The method already trains the first model. We will evaluate its performance during the comparison of the trained machine learning models.
+The result of this step already trains the first model. We will evaluate its performance during the comparison of the trained machine learning models.
 
 # Training/test data division and resampling
 
-## tree model
+## Splitting dataset
 
-We would like to understand at this level of aggregation their level of contribution to the overall score.
+The result might suggest that the dataset is somehow not completely random. It is confirmed with the fact that the following train / test split should be respected. First 463 715 observations should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
 
-```{r}
-cov_tree <- tree(first_model_formula, transformed_data)
-```
-```{r}
-summary(cov_tree)
-```
-```{r}
-plot(cov_tree)
-text(cov_tree, pretty = 0)
-```
-```{r}
-summary(cov_tree)
-```
+The dataset authors add that thanks to that split 'producer effect' will be avoided. Next, we confirm that the remaining attributes correspond to the timbre covariates.
 
-Controlling for size of trees.
 
 ```{r}
-rpart_tree <- rpart(first_model_formula,
-                     data = transformed_data,
+if (experiment){
+  train_data <- transformed_data %>% slice_head(n = 890)
+  test_data <- transformed_data %>% slice_tail(n = 110)
+} else{
+  train_data <- transformed_data %>% slice_head(n = 463715)
+  test_data <- transformed_data %>% slice_tail(n = 51630)
+}
+```
+
+We considered all the variables in the dataset, however the problem appear to be unfeasible. We experienced both memory and time complexity. We try to omit the obstacles with the large size of the dataset. We choose only these dimensions shown in descriptive analysis that are correlated with the target above the manually specified threshold.
+
+# Different machine learning methods
+
+## Basic tree model
+
+Therefore, we operate on the transformed dataset with interactions considering only chosen variables.
+
+```{r}
+model_formula <- year_scaled ~ .
+```
+
+We start with the basic tree model - `tree()`. It uses the *binary recursive algorithm*. Splits are generated until the criterium that relates to node impurity is not met.
+
+```{r}
+basic_tree <- tree(model_formula, train_data)
+```
+
+```{r}
+summary(basic_tree)
+```
+
+As presented above the model chosen only two variables for the final prediction. Both of them include loudness.
+
+```{r}
+plot(basic_tree)
+text(basic_tree, pretty = 0)
+```
+
+Interestingly, there are only three terminal nodes. It might relate to the skewness of the target variable. Nevertheless,
+it can be somehow described as naive, baseline model.
+
+## Tree model with rpart
+
+Package rpart offer different way of handling surrogate variables.
+
+```{r}
+rpart_tree <- rpart(model_formula,
+                     data = train_data,
                      method = "anova")
-plotcp(rpart_tree)
 ```
 
-Following **the rule of 1-SE** we choose trees with 14 terminal nodes. Thanks to that overfitting can be omitted.
+### optimization
 
-Other values can be optimized in the process as well `minsplit` and `maxdepth`. The first one relates to the number of observations that need to belong to the node before the split is considered. The latter one describe the height of the tree. It is the number of nodes between the root and the deepest terminal node.
+We want to optimize  `minsplit`. It relates to the number of observations that need to belong to the node before the split is considered. We neglect `maxdepth` because of already contrained number of final variables included in the model.
 
 ```{r, results='hide'}
-hyper_grid <- expand.grid(
-        minsplit = seq(5, 20, 1),
-        maxdepth = seq(8, 15, 1)
+hyper_vec <- expand.grid(
+        minsplit = seq(2, 8, 1)
 )
 ```
+The values in the grid are chosen so that they relate to the data that we are using in this problem.
+
 ```{r, results='hide'}
-models <- list()
-for (i in 1:nrow(hyper_grid)) {
+vec_models <- list()
+for (comb in 1:nrow(hyper_vec)) {
 
-  cat(i, "/", nrow(hyper_grid), "\n", sep = "")
+  cat(comb, "/", nrow(hyper_vec), "\n", sep = "")
 
-  # setting the values
-  minsplit <- hyper_grid$minsplit[i]
-  maxdepth <- hyper_grid$maxdepth[i]
+  minsplit <- hyper_vec$minsplit[comb]
 
   # settin the seed
-  set.seed(123123 + i)
+  set.seed(9438 + comb)
 
   # training of the model and saving results to the list
-  models[[i]] <- rpart(
-          formula = first_model_formula,
+  vec_models[[comb]] <- rpart(
+          formula = model_formula,
           data    = train_data,
           method  = "anova",
-          control = list(minsplit = minsplit, maxdepth = maxdepth)
+          control = list(minsplit = minsplit)
   )
 }
 ```
+
+Now models with the lowest error can be easily chosen. Therefore,
+we use the functions that were introduced during the classes.
 
 ```{r }
 get_cp <- function(x) {
@@ -356,115 +383,77 @@ get_min_error <- function(x) {
   return(xerror)
 }
 ```
+
+Last but not least, we choose top three performers out 7 different models.
+
 ```{r, echo = FALSE}
-hyper_grid %>%
+hyper_vec %>%
         mutate(
-                cp    = purrr::map_dbl(models, get_cp),
-                error = purrr::map_dbl(models, get_min_error)
+                cp    = purrr::map_dbl(vec_models, get_cp),
+                error = purrr::map_dbl(vec_models, get_min_error)
         ) %>%
         arrange(error) %>%
-        top_n(-5, wt = error)
+        top_n(-3, wt = error)
 ```
 
-Let's examine performance of the model with the lowest prediction error
-on the testing set.
+Let's build tree with the parameters that correspond to the lowest prediction error on the testing set.
 
 ```{r }
-optimal_tree <- rpart(
-        formula = first_model_formula,
+optimized_tree <- rpart(
+        formula = model_formula,
         data    = train_data,
         method  = "anova",
-        control = list(minsplit = 14, maxdepth = 12, cp = 0.01)
+        control = list(minsplit = 5, cp = 0.01) #to put after experiment is completed
 )
-
-pred <- predict(optimal_tree, newdata = test_data)
-optimal_RMSE <- RMSE(pred = pred, obs = test_data$year_scaled)
 ```
 
-```{r }
-tc      <- trainControl(method = "cv", number = 10)
-cp.grid <- expand.grid(cp = seq(0, 0.03, 0.001))
-```
-
-```{r}
-tree3 <- train(first_model_formula,
-                      data = train_data,
-                      method = "rpart",
-                      trControl = tc,
-                      tuneGrid = cp.grid)
-
-pred <- predict(tree3, newdata = test_data)
-
-tree3_RMSE <- RMSE(pred = pred, obs = test_data$year_scaled)
-```
-
-## Bagging and random forest
-
-Firstly, we run `randomForest()` function. It does not allow for missing values in the dataset. However, as previously shown we do not deal with this problem in our dataset.
-
-```{r}
-rf <- randomForest(first_model_formula,
-                           data = train_data)
-```
-Interestingly, for random forest the prediction error can be computed without applying the model on the test dataset. The out-of-bag error is estimated then. Based on the stochastic experiment performed during the classes, the OOB is around 63 % of the size of the original data set.
-
-```{r}
-print(rf)
-```
-```{r}
-plot(rf)
-```
-Some of the advantages of randomForest package refer to its simplicity. Above we can see two efficient ways of accessing object metadata. Both ways are presented, the graphical and the tabular form. What is more the graphical representation of the most influencial variables can be achieved very easily.
-
-```{r}
-varImpPlot(rf,
-           sort = TRUE,
-           main = "Importance of predicors")
-```
-
-The `mtry` parameter can be optimized with the cross-validation process.
-
-```{r}
-parameters_rf <- expand.grid(mtry = 2:15)
-ctrl_oob <- trainControl(method = "oob")
-rf3 <- train(first_model_formula,
-              data = train_data,
-              method = "rf",
-              ntree = 100,
-              nodesize = 100,
-              tuneGrid = parameters_rf,
-              trControl = ctrl_oob,
-              importance = TRUE)
-```
-
-With that object the analysis can be performed efficiently.
+Optimized tree is the one with parameters that correspond to the lowest error.
 
 ## XGBoost
 
+As the next step, we use XGBoost. What is more, we additionally center and scale the predictors.
+
 ```{r}
-xgb_parameters <-
-        expand.grid(nrounds = 320,
-                    max_depth = 9,
-                    eta = 0.06,
-                    gamma = 1,
-                    colsample_bytree = 0.7,
-                    min_child_weight = 200,
-                    subsample = 0.9)
+trainctrl <- trainControl(verboseIter = TRUE,
+                          method = "cv",
+                          number = 10)
+
 xgb_model <-
-        train(first_model_formula,
-              data = train_data,
-              method = "xgbTree",
-              preProcess = c("center", "scale"),
-              tuneGrid  = xgb_parameters)
+  train(model_formula,
+        data = train_data,
+        method = "xgbTree",
+        trControl = trainctrl,
+        preProcess = c("center", "scale"))
+```
+
+## VSURF
+
+Variable selection occurred to be the most challenging process. It seems to be computationally infeasible. We limit the training data to sample 10000 observations.
+
+```{r}
+data_for_vsurf <- train_data %>% sample_n(10000)
+vsurf <- VSURF(x = data_for_vsurf %>% select(-year_scaled),
+               y = data_for_vsurf %>%  pull(year_scaled),
+               ntree = 100, nfor.thres = 13,
+               parallel = 4,
+               nfor.interp = 5, nfor.pred = 3)
 ```
 
 # Comparison
+
+In this step we compare models built in the report and their accuracy on the test data. We will use script from the classes - getRegressionMetrics.
+
 ```{r}
 source('..\\src\\models\\getRegressionMetrics.R')
 ```
+
+We add yielding the results in a form of a readable table.
+
 ```{r }
-bind_cols(tibble(tree         =  predict(tree3,  test_data),
-                 optimal_tree         =  predict(optimal_tree,  test_data))) %>%
+performance_comparison <- bind_cols(tibble(tree         =  predict(basic_tree,  test_data),
+                 vsurf = predict(vsurf, test_data) %>% pull(pred),
+                 xgb = predict(xgb_model, test_data),
+                 optimized_tree         =  predict(optimized_tree,  test_data))) %>%
         map_dfr(getRegressionMetrics, real = test_data$year_scaled, .id = "model")
 ```
 
