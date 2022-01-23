@@ -65,12 +65,11 @@ dictionary <- tibble(features = features,
                      pretty_name = pretty_names)
 dictionary
 
-#Handling NAs 
+#Handling NAs
 dim(df)
 table(is.na(df))
 #no NAs
 
-# Spotting variables' duplicates 
 
 table(duplicated(df))
 
@@ -86,16 +85,3 @@ sapply(df_f, class)
 df_f %>% as_tibble()
 
 table(df_f$checking_status)
-
-
-
-
-
-
-
-
-
-
-
-
-
