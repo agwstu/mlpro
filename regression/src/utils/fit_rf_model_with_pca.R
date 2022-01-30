@@ -1,4 +1,4 @@
-fit_rf_model_with_recipe <- function(recipe, data){
+fit_rf_model_with_pca <- function(recipe, data){
   rf_model <- rand_forest()
 
   rf_wflow <-

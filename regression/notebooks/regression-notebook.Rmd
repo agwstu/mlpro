@@ -6,17 +6,17 @@ bibliography: bibliography.bib
 link-citations: yes
 nocite: '@*'
 output:
-html_document:
-    toc: true
-    toc_float: true
-    number_sections: true
-    theme: united
-    df_print: paged
+    html_document:
+        toc: true
+        toc_float: true
+        number_sections: true
+        theme: united
+        df_print: paged
 ---
 
 # Description of data and problem analyzed
 
-Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that returned mostly the songs between 1922 to 2011. Most of the observations relate to the  2000s [@Bertin-Mahieux2011]. We downloaded it from the Machine Learning Repository [@Dua:2019].
+Audio features play a significant role in the prediction of the song release year. The Million Song Dataset is a free collection of million music tracks consists. Based on this dataset a subset has been created that consists mostly the songs between 1922 to 2011. The majority of the observations relate to the 2000s [@Bertin-Mahieux2011]. We downloaded it from the Machine Learning Repository [@Dua:2019].
 
 ```{r, echo = FALSE}
 pacman::p_load(data.table, tidyverse, knitr,
@@ -25,17 +25,23 @@ pacman::p_load(data.table, tidyverse, knitr,
                kableExtra, tree, rpart, caret,
                VSURF)
 experiment <- FALSE
+train_models <- FALSE
 ```
 
 There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall, timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack [@Bertin-Mahieux2013].
 
 ## Data Preprocessing
 
-Data preprocessing is told to take around 80 % of the data science project. In our case the data is very well prepared, there
+Data preprocessing is told to take around 80 % of the machine learning project. Analyzed dataset has a lot of observations that makes it hard to prototype quickly. We prepared a subsample of this dataset that was used for this purpose, in the very early stage of the projects.
 
 ## Reading data
+
+We begin with reading the data.
+
 ```{r, echo = FALSE}
 source('..\\src\\utils\\fit_table.r')
+source("..\\src\\utils\\t_test_across_centuries.R")
+source('..\\src\\models\\getRegressionMetrics.R')
 ```
 
 ```{r}
@@ -47,7 +53,7 @@ if (experiment){
 raw_data %>% fit_table()
 ```
 
-The first column in the dataset correspond to the year that will be predicted from the features. With the MSD many tasks can be addressed, however the song release year brings many practical applications and there are not a lot of research papers that relate to this prediction problem. Only audio features are used in this problem which is justified with the fact that listeners are often fond of music from certain periods of their lives. Another reason might be the evolution of timbre across years.
+The first column in the dataset correspond to the year that will be predicted from the features. With the MSD many tasks can be addressed. Interestingly, the song release year brings many practical applications. There are not a lot of research papers that relate to this prediction problem. Only audio features are used in this problem which is justified with the fact that listeners are often fond of music from certain periods of their lives. Another reason might be the evolution of timbre across years.
 
 ## Renaming columns
 
@@ -65,16 +71,18 @@ raw_data %>% fit_table()
 The authors in the main article mapped the year values using linear mapping to [0,1] range [@Bertin-Mahieux2011]. We follow the convention in the analysis below.
 
 ```{r}
-# mapping target to [0,1] range
 range_to_0_1 <- function(vec) {
   (vec - min(vec)) / (max(vec) - min(vec))
 }
 
 raw_data$year_scaled <- range_to_0_1(raw_data$year)
-raw_data$year_scaled <- range_to_0_1(raw_data$year)
 ```
 
+We add the column to the raw dataset and mark that this is scaled variable.
+
 ## Splitting covariates
+
+We needed to investigate what the timbre in the sound analysis actually means. It is described as everything that can be differentiated between two different tracks by the listener having kept the same pitch, spatial location and loudness and refers to the perceptual quality of a sound and color. "Brightness", "clarity", "harshness", "fullness" and "noisiness" are frequently used adjectives that are associated with the timbre word [@Allen2018].
 
 ```{r}
 timbre_average_data <- raw_data %>%
@@ -82,7 +90,7 @@ timbre_average_data <- raw_data %>%
 timbre_average_data %>% fit_table()
 ```
 
-We needed to investigate what the timbre in the sound analysis actually means. It is described as everything that can be differentiated between two different tracks by the listener having kept the same pitch, spatial location and loudness and refers to the perceptual quality of a sound and color. "Brightness", "clarity", "harshness", "fullness" and "noisiness" are frequently used adjectives that are associated with the timbre word [@Allen2018].
+Covariance is taken over all segments, where each segment is described by 12-dimensional vector.
 
 ```{r}
 timbre_covariance_data <- raw_data %>%
@@ -90,23 +98,24 @@ timbre_covariance_data <- raw_data %>%
 timbre_covariance_data %>% fit_table()
 ```
 
-Covariance is taken over all segments, where each segment is described by 12-dimensional vector.
-
 ## Handling missing values
+
+We check whether there are missing values in the dataset.
 
 ```{r}
 raw_data %>%
         summarise(across(everything(), ~sum(is.na(.))))
 ```
-There are no missing values across columns and in the whole dataset. This is an important insight. It is likely to influence an easier later phases of the project e.g exploratory data analysis and modelling.
+
+There are no missing values across columns and in the whole dataset.
 
 # Descriptive analyses of the data
 
-Having prepared the dataset we can follow the analysis and in the next points visualized dataset including both target and features on which the model will be trained.
+Having prepared the dataset we can easily follow the analysis. In the next points visualize the dataset and include both target and features on which the model will be trained.
 
-## One-dimensional plots
+## Distributions plots
 
-The target variable in the problem analyzed is year. We easily spot the distribution of it being heavily skewed.
+We begin with distributions of the year variable.
 
 ```{r}
 raw_data %>%
@@ -116,15 +125,18 @@ raw_data %>%
     geom_density(alpha = .2, fill = "blueviolet") +
     labs(title = "Distribution of the outcome variable - density and histogram",
          caption = "source: produced with ggplot package") +
-    theme(plot.title = element_text(hjust = 0.5, size = 20),
-          axis.text.x = element_text(size = 20))
+    theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
 
-## Two-dimensional plots
+We easily spot that the density of the target variable year is heavily skewed.
+
+## Advanced visualizations
+
+We proceed with more advanced visualization.
 
 ### Number of songs across centuries
 
-For the first plot we have decided to squeeze the year variable based on the century because the distribution of the songs across years is highly nonuniform.
+For the first plot we have decided to squeeze the year variable based on the century because the distribution of the songs across years is highly non-uniform.
 
 ```{r}
 timbre_average_data %>%
@@ -142,12 +154,14 @@ timbre_average_data %>%
     theme(legend.position = 'bottom')  +
     guides(fill = guide_legend(nrow = 2,byrow = TRUE)) +
     scale_fill_grey() +
-    theme(plot.title = element_text(hjust = 0.5, size = 20))
+    theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
 
 We see that the count of songs increase with the centuries, although, there are more years in the dataset, in XX century.
 
 ### Loudness across decades
+
+After getting to know some feature names we can visualize the one that is most intuitive for us, loudness, in the form of boxplot across decades.
 
 ```{r}
 timbre_average_data %>%
@@ -157,16 +171,17 @@ timbre_average_data %>%
     select(loudness, decade) %>%
     ggplot(aes(x= decade, y = loudness, group=decade, fill = decade)) +
     geom_boxplot() +
-    labs(title = "Loudness across decades") +
+    labs(title = "Loudness across decades",
+         caption = "source: produced with ggplot package") +
     guides(fill = "none", group = "none") +
-    theme(plot.title = element_text(hjust = 0.5))
+    theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
 
-Increase in loudness is spotted across decades. Nowadays people listen to louder music more.
+Increase in loudness is spotted across decades. Nowadays louder music is produced.
 
 ### Correlation matrix
 
-An important area that should not be neglected in the process of building machine learning model is creating the correlation matrix based on which we will continue investigation regarding the two-dimensional plots. We have decided to learn more about the timbre split suggested by the authors. Based on that we can check whether average timbre or timbre covariance have stronger influence on the outcome variable.
+An important area that should not be neglected in the process of building machine learning model is assessing the correlations.
 
 ```{r}
 corr_average <- timbre_average_data %>%
@@ -174,8 +189,9 @@ corr_average <- timbre_average_data %>%
         cor()
 
 ggcorrplot(corr_average, hc.order = TRUE, type = "lower", lab = TRUE) +
-    labs(title = "Correlation between timbre average data and the outcome variable.") +
-    theme(plot.title = element_text(hjust = 0.5, size = 20))
+    labs(title = "Correlation between timbre average data and the outcome variable",
+         caption = "source: produced with ggplot package") +
+    theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
 
 Based on the correlation matrix we spot two variables that might be important in predicting the song release year V2 and V7. V7 is negatively correlated with the year which means that the higher the variable the lower the year.
@@ -185,6 +201,8 @@ corr_covariance <- timbre_covariance_data %>%
         mutate(year = raw_data$year) %>%
         cor()
 ```
+
+Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater than chosen level of correlation.
 
 ```{r}
 high_corr_columns <- corr_covariance %>%
@@ -197,8 +215,7 @@ high_corr_columns <- corr_covariance %>%
         pull(row_name)
 ```
 
-
-Because there are a lot of columns inside the timbre covariance matrix we choose to visualize only the ones that are greater than chosen level of correlation. Interestingly it is set very low to 0.05 since the association is extremely low.
+The threshold is set to extremely low value, only 0.05, because of the overall small of correlation with the target variable.
 
 ```{r}
 corr_covariance <-  timbre_covariance_data %>%
@@ -214,42 +231,44 @@ ggcorrplot(corr_covariance,
            lab = TRUE,
            method = 'circle',
            lab_size = 3) +
-  labs(title = "Correlation between timbre covariance data and the outcome variable.") +
-  theme(plot.title = element_text(hjust = 0.5, size = 20))
+  labs(title = "Correlation between timbre covariance data and the outcome variable",
+       caption = "source: produced with ggplot package") +
+  theme(plot.title = element_text(hjust = 0.5, size = 12))
 ```
 
-The highest correlation with the target variable is spotted between variable V21, V74, V15 and V40 What is more the multicollinearity might be spotted for variable V15 and V21 with the correlation value 0.48.
+The highest association with the target variable is spotted between variable V21, V74, V15 and V40. What is more the multicollinearity might be spotted for variable V15 and V21 with the correlation value 0.48.
 
 ## Statistical analysis
 
+After visualization step we are checking the differences in means across centuries for the most correlated variables.
+
 ```{r}
-source("..\\src\\utils\\t_test_across_centuries.R")
 t_test_test_across_centuries(timbre_average_data %>%
-                                     mutate(year = target_data$year),
+                                     mutate(year = raw_data$year),
                              'V2')
 t_test_test_across_centuries(timbre_average_data %>%
-                                     mutate(year = target_data$year),
+                                     mutate(year = raw_data$year),
                              'V7')
 t_test_test_across_centuries(timbre_covariance_data %>%
-                                     mutate(year = target_data$year),
+                               mutate(year = raw_data$year),
                              'V21')
 t_test_test_across_centuries(timbre_covariance_data %>%
-                                     mutate(year = target_data$year),
+                                     mutate(year = raw_data$year),
                              'V15')
-test_test_across_centuries(timbre_covariance_data %>%
-                                     mutate(year = target_data$year),
+t_test_test_across_centuries(timbre_covariance_data %>%
+                                     mutate(year = raw_data$year),
                              'V74')
 ```
 
-We have show that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year.
+We show that across the centuries averages differ for the variables that are the most correlated with the target variable. It might be an indicator that these variables will play a significant role in predicting the song release year. On the other hand, with the dataset with thousands of observations even small differences might be statistically significant.
 
 # Variable transformation
 
-In this step we embrace creating interactions between the most influential variables accordingly to the descriptive analysis step.
+In this step we embrace creating interactions between the most influential variables accordingly to the previous step.
 
 ## Interactions
 
-Since we deal with only numeric variables we do not need to perform dummification step.
+Since we deal with only numeric variables we do not need to perform dummification step. We focus on the interactions between most correlated variables.
 
 ```{r}
 formula_for_interactions <- year_scaled ~ V2 + V7 + V21 + V15 + V74
@@ -270,18 +289,17 @@ Final transformed data used in the modelling consist of 16 dimensions. They are 
 
 # Variable selection
 
-We investigated two packages varSelRF [@varselrf] and VSURF [@genuer:hal-01251924] for variable selection step. We have chosen them mainly because of their dependency on the randomForest package that was used during the classes. The latter one is not implemented for regression problem. Hence, varSelfRF will be used which is more complicated procedure. It consists of three steps: thresholding, interpretation and prediction step. Thresholding is based on variable importance. The interpretation embeds random forest models starting with the one built only on the variables chosen in the previous step. Next, the stepwise selection procedure is applied in the final, prediction procedure.
+Having chosen the dimensions we investigate two packages varSelRF [@varselrf] and VSURF [@genuer:hal-01251924] for variable selection step. We choose them mainly because of their dependency on the randomForest package that was used during the classes. The latter one is not implemented for regression problem. Hence, varSelfRF will be used which is more complicated procedure. It consists of three steps: thresholding, interpretation and prediction step. Thresholding is based on variable importance. The interpretation embeds Random Forest models starting with the one built only on the variables chosen in the previous step. Next, the stepwise selection procedure is applied. Last but not least prediction is considered.
 
-The result of this step already trains the first model. We will evaluate its performance during the comparison of the trained machine learning models.
+ We will present the code for this section and evaluate its performance in the comparison of the trained machine learning models.
 
 # Training/test data division and resampling
 
 ## Splitting dataset
 
-The result might suggest that the dataset is somehow not completely random. It is confirmed with the fact that the following train / test split should be respected. First 463 715 observations should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
+The following train / test split is respected. First 463 715 observations should be used for the training purposes while the remaining 51 630 are the observations on which the regression model will be tested.
 
 The dataset authors add that thanks to that split 'producer effect' will be avoided. Next, we confirm that the remaining attributes correspond to the timbre covariates.
-
 
 ```{r}
 if (experiment){
@@ -297,9 +315,11 @@ We considered all the variables in the dataset, however the problem appear to be
 
 # Different machine learning methods
 
+Followingly, after preparing the final dimensions and splitting the dataset into the train and test data we build several machine learning models.
+
 ## Basic tree model
 
-Therefore, we operate on the transformed dataset with interactions considering only chosen variables.
+In the formula below we state that all the finally transformed and chosen variables will be used for training.
 
 ```{r}
 model_formula <- year_scaled ~ .
@@ -310,6 +330,8 @@ We start with the basic tree model - `tree()`. It uses the *binary recursive alg
 ```{r}
 basic_tree <- tree(model_formula, train_data)
 ```
+
+This basic tree might serve as a baseline model for more advanced techniques.
 
 ```{r}
 summary(basic_tree)
@@ -322,28 +344,19 @@ plot(basic_tree)
 text(basic_tree, pretty = 0)
 ```
 
-Interestingly, there are only three terminal nodes. It might relate to the skewness of the target variable. Nevertheless,
-it can be somehow described as naive, baseline model.
+Interestingly, there are only three terminal nodes. It might relate to the skewness of the target variable. Again, it can be described as naive, baseline model.
 
-## Tree model with rpart
 
-Package rpart offer different way of handling surrogate variables.
+## Optimized tree model with rpart
 
-```{r}
-rpart_tree <- rpart(model_formula,
-                     data = train_data,
-                     method = "anova")
-```
-
-### optimization
-
-We want to optimize  `minsplit`. It relates to the number of observations that need to belong to the node before the split is considered. We neglect `maxdepth` because of already contrained number of final variables included in the model.
+Package rpart offer different way of handling surrogate variables. We want to optimize  `minsplit`. It relates to the number of observations that need to belong to the node before the split is considered. We neglect `maxdepth` because of already contrained number of final variables included in the model.
 
 ```{r, results='hide'}
 hyper_vec <- expand.grid(
         minsplit = seq(2, 8, 1)
 )
 ```
+
 The values in the grid are chosen so that they relate to the data that we are using in this problem.
 
 ```{r, results='hide'}
@@ -354,10 +367,8 @@ for (comb in 1:nrow(hyper_vec)) {
 
   minsplit <- hyper_vec$minsplit[comb]
 
-  # settin the seed
   set.seed(9438 + comb)
 
-  # training of the model and saving results to the list
   vec_models[[comb]] <- rpart(
           formula = model_formula,
           data    = train_data,
@@ -368,9 +379,9 @@ for (comb in 1:nrow(hyper_vec)) {
 ```
 
 Now models with the lowest error can be easily chosen. Therefore,
-we use the functions that were introduced during the classes.
+we use the functions that were introduced during the classes get_cp and get_min_error.
 
-```{r }
+```{r, echo = FALSE}
 get_cp <- function(x) {
   min <- which.min(x$cptable[, "xerror"])
   cp  <- x$cptable[min, "CP"]
@@ -384,7 +395,7 @@ get_min_error <- function(x) {
 }
 ```
 
-Last but not least, we choose top three performers out 7 different models.
+Last but not least, we choose top three performers out of 7 different models.
 
 ```{r, echo = FALSE}
 hyper_vec %>%
@@ -403,7 +414,7 @@ optimized_tree <- rpart(
         formula = model_formula,
         data    = train_data,
         method  = "anova",
-        control = list(minsplit = 5, cp = 0.01) #to put after experiment is completed
+        control = list(minsplit = 5, cp = 0.01)
 )
 ```
 
@@ -411,41 +422,56 @@ Optimized tree is the one with parameters that correspond to the lowest error.
 
 ## XGBoost
 
-As the next step, we use XGBoost. What is more, we additionally center and scale the predictors.
+As the next step, we use XGBoost.
 
-```{r}
+```{r results='hide'}
 trainctrl <- trainControl(verboseIter = TRUE,
                           method = "cv",
                           number = 10)
 
-xgb_model <-
-  train(model_formula,
+if (train_models){
+    xgb_model <- train(model_formula,
         data = train_data,
         method = "xgbTree",
         trControl = trainctrl,
         preProcess = c("center", "scale"))
+} else{
+  xgb_model <- readRDS("..\\models\\xgb_model.rds")
+}
 ```
+
+What is more, we additionally center and scale the predictors. Cross-validation with 10 folds is a part of training this model.
 
 ## VSURF
 
 Variable selection occurred to be the most challenging process. It seems to be computationally infeasible. We limit the training data to sample 10000 observations.
 
-```{r}
-data_for_vsurf <- train_data %>% sample_n(10000)
-vsurf <- VSURF(x = data_for_vsurf %>% select(-year_scaled),
-               y = data_for_vsurf %>%  pull(year_scaled),
-               ntree = 100, nfor.thres = 13,
-               parallel = 4,
-               nfor.interp = 5, nfor.pred = 3)
+```{r, results='hide'}
+if (experiment){
+  data_for_vsurf <- train_data %>% sample_n(100)
+} else{
+  data_for_vsurf <- train_data %>% sample_n(10000)
+}
+
+if (train_models){
+  vsurf <- VSURF(x = data_for_vsurf %>% select(-year_scaled),
+                 y = data_for_vsurf %>%  pull(year_scaled),
+                 ntree = 100, nfor.thres = 13,
+                 parallel = 4,
+                 nfor.interp = 5, nfor.pred = 3)
+} else{
+  vsurf <- readRDS("..\\models\\vsurf_model.rds")
+}
+
 ```
+
+The result of this step already trains the first model.
 
 # Comparison
 
 In this step we compare models built in the report and their accuracy on the test data. We will use script from the classes - getRegressionMetrics.
 
-```{r}
-source('..\\src\\models\\getRegressionMetrics.R')
-```
+## Regression metrics
 
 We add yielding the results in a form of a readable table.
 
@@ -455,16 +481,15 @@ performance_comparison <- bind_cols(tibble(tree         =  predict(basic_tree,  
                  xgb = predict(xgb_model, test_data),
                  optimized_tree         =  predict(optimized_tree,  test_data))) %>%
         map_dfr(getRegressionMetrics, real = test_data$year_scaled, .id = "model")
+
+performance_comparison %>% fit_table()
 ```
 
+XGBoost is the best performing model on the test dataset.
 
+## XGBoost final predictions
 
-
-
-
-
-
-
+We present the results in a form of scatter plot of true values vs the corresponding predictions for the top model achieved in this project.
 
 ```{r}
 y_pred <- xgb_model %>% predict(test_data)
@@ -478,8 +503,11 @@ dt %>% glimpse()
 dt %>%
   ggplot(aes(x = y, y = y_pred)) +
   geom_point() +
-  geom_smooth(method = lm, se = T)
+  geom_smooth(method = lm, se = T) +
+  labs(x = "True values", y = "Predictions")
 ```
+
+The model mostly predicts high values of the target variable. Nevertheless, we improve the results in comparison to the baseline model. Accordingly to the article this improvement is already significant.
 
 # Summary and conclusions
 
@@ -487,39 +515,12 @@ First of all, for the first time we have been modelling on dataset of this size.
 We needed to take appropriate measures in order to experiment faster for instance
 sampling 1000 observations and working only on them.
 
-Secondly, the variables' names were not provided and we managed to find the naming for only few of them. We were not aware how the timbre might influence the outcome variable and haven't any intuition towards the variables that might be important. Hence, we focused on quantitative measures such as correlations or statistical tests. Nevertheless, the visualizations also occurred to be informative.
+Secondly, the names of the variables were not provided. We managed to find the naming for only few of them. We were not aware how the timbre might influence the outcome variable and haven't any intuition towards the variables that might be important. Hence, we focused on quantitative measures such as correlations or statistical tests. Nevertheless, the visualizations also occurred to be informative.
 
 What is more, the variable selection process was an opportunity to learn more about
 how to choose packages. During the notebook production we have already known
 what libraries were introduced during the classes (randomForest), what machine learning problem we analyze (regression) and what are the methods that it needs to implement (predict). Considering these three constraints we have chosen one that suits all of the aforementioned needs.
 
-Last but not least, it has been a fruitful experience to have all the results
-stored in a single table and compare them easily. Based on them we see that how
-the performance measures are distributed across models.
+Last but not least, it has been a fruitful experience to build different machine learning models. However, the limited resources of local machines suggest that using Apache Spark in R or cloud solutions with more power would be beneficial.
 
 # References
-
-# Appendix
-
-```{r}
-source('..\\src\\utils\\fit_rf_model_with_recipe.R')
-simple_recipe_with_log <-
-        recipe(year_scaled ~ .,
-               data = train_data %>% mutate(year = target_data$year_scaled)) %>%
-                step_log(V15, base = 10)
-```
-
-
-```{r}
-simple_recipe_with_interact <-
-        recipe(year_scaled ~ .,
-               data = train_data) %>%
-                step_interact(terms = ~V14:V91)
-```
-
-## Model with transformed variables
-```{r}
-fit_rf_model_with_recipe(simple_recipe_with_log, train_data)
-
-fit_rf_model_with_recipe(simple_recipe_with_interact, train_data)
-```
