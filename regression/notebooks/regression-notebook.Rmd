@@ -24,8 +24,8 @@ pacman::p_load(data.table, tidyverse, knitr,
                randomForest, Rcpp, ranger,
                kableExtra, tree, rpart, caret,
                VSURF)
-experiment <- FALSE
-train_models <- FALSE
+knitr::opts_chunk$set(cache = TRUE)
+seed <- 123
 ```
 
 There are 515345 observations in the dataset. 90 attributes describe each and single observation. All of the attributes are real number and correspond to the timbre either average or covariance. The Echo Nest API is used in order to extract the features from the timbre which must be an additional service. In overall, timbre-related features describes spectogram patches. Considering the particular dimensions of the 12-dimension timbre vector they represent the average loudness of the segment, with the second the brightness is described, the third relate to the flatness of a sound and the fourth to the sounds with stronger attack [@Bertin-Mahieux2013].
@@ -45,11 +45,7 @@ source('..\\src\\models\\getRegressionMetrics.R')
 ```
 
 ```{r}
-if (experiment){
-  raw_data <- read.csv2('..\\data\\raw\\YearPredictionMSD_sample.txt')
-} else{
-  raw_data <- read.csv('..\\data\\raw\\YearPredictionMSD.txt', header = FALSE)
-}
+raw_data <- read.csv('..\\data\\raw\\YearPredictionMSD.txt', header = FALSE)
 raw_data %>% fit_table()
 ```
 
@@ -302,13 +298,8 @@ The following train / test split is respected. First 463 715 observations should
 The dataset authors add that thanks to that split 'producer effect' will be avoided. Next, we confirm that the remaining attributes correspond to the timbre covariates.
 
 ```{r}
-if (experiment){
-  train_data <- transformed_data %>% slice_head(n = 890)
-  test_data <- transformed_data %>% slice_tail(n = 110)
-} else{
-  train_data <- transformed_data %>% slice_head(n = 463715)
-  test_data <- transformed_data %>% slice_tail(n = 51630)
-}
+train_data <- transformed_data %>% slice_head(n = 463715)
+test_data <- transformed_data %>% slice_tail(n = 51630)
 ```
 
 We considered all the variables in the dataset, however the problem appear to be unfeasible. We experienced both memory and time complexity. We try to omit the obstacles with the large size of the dataset. We choose only these dimensions shown in descriptive analysis that are correlated with the target above the manually specified threshold.
@@ -328,6 +319,7 @@ model_formula <- year_scaled ~ .
 We start with the basic tree model - `tree()`. It uses the *binary recursive algorithm*. Splits are generated until the criterium that relates to node impurity is not met.
 
 ```{r}
+set.seed(seed)
 basic_tree <- tree(model_formula, train_data)
 ```
 
@@ -410,6 +402,7 @@ hyper_vec %>%
 Let's build tree with the parameters that correspond to the lowest prediction error on the testing set.
 
 ```{r }
+set.seed(seed)
 optimized_tree <- rpart(
         formula = model_formula,
         data    = train_data,
@@ -425,19 +418,21 @@ Optimized tree is the one with parameters that correspond to the lowest error.
 As the next step, we use XGBoost.
 
 ```{r results='hide'}
+set.seed(seed)
 trainctrl <- trainControl(verboseIter = TRUE,
                           method = "cv",
                           number = 10)
 
-if (train_models){
-    xgb_model <- train(model_formula,
+if (0){
+  set.seed(seed)
+  xgb_model <- train(model_formula,
         data = train_data,
         method = "xgbTree",
         trControl = trainctrl,
         preProcess = c("center", "scale"))
-} else{
-  xgb_model <- readRDS("..\\models\\xgb_model.rds")
+  saveRDS(xgb_model,"..\\models\\xgb_model.rds")
 }
+xgb_model <- readRDS("..\\models\\xgb_model.rds")
 ```
 
 What is more, we additionally center and scale the predictors. Cross-validation with 10 folds is a part of training this model.
@@ -447,22 +442,19 @@ What is more, we additionally center and scale the predictors. Cross-validation 
 Variable selection occurred to be the most challenging process. It seems to be computationally infeasible. We limit the training data to sample 10000 observations.
 
 ```{r, results='hide'}
-if (experiment){
-  data_for_vsurf <- train_data %>% sample_n(100)
-} else{
-  data_for_vsurf <- train_data %>% sample_n(10000)
-}
+data_for_vsurf <- train_data %>% sample_n(10000)
 
-if (train_models){
+if (0){
+  set.seed(seed)
   vsurf <- VSURF(x = data_for_vsurf %>% select(-year_scaled),
                  y = data_for_vsurf %>%  pull(year_scaled),
                  ntree = 100, nfor.thres = 13,
                  parallel = 4,
                  nfor.interp = 5, nfor.pred = 3)
-} else{
-  vsurf <- readRDS("..\\models\\vsurf_model.rds")
+  saveRDS(vsurf, "..\\models\\vsurf_model.rds")
 }
 
+vsurf <- readRDS("..\\models\\vsurf_model.rds")
 ```
 
 The result of this step already trains the first model.
